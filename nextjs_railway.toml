@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "./nextjs_dockerfile"
+watchPatterns = [
+    "frontend/**", 
+    "nextjs_railway.toml",
+    "nextjs_dockerfile",
+]
