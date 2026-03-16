@@ -75,7 +75,7 @@ export default function MainChatPage() {
   const pendingSendRef = useRef(false);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { send, cancel, isStreaming } = useSendMessage();
+  const { send, isStreaming } = useSendMessage();
   const { data: alertsData } = useAlerts({ resolved: false });
   const alerts = alertsData?.results ?? [];
   const { data: hiveSummary } = useHiveSummary();
@@ -180,6 +180,7 @@ export default function MainChatPage() {
       } else if (event.error === "no-speech") {
         // 음성이 감지되지 않음 - 무시
       } else {
+        // eslint-disable-next-line no-console
         console.error("음성 인식 오류:", event.error, event.message);
       }
     };
@@ -205,6 +206,7 @@ export default function MainChatPage() {
           recognitionRef.current?.stop();
         }, 5000);
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error("음성 인식 시작 실패:", err);
         alert("음성 인식을 시작할 수 없습니다. 마이크 권한을 확인해주세요.");
       }
