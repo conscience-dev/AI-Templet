@@ -35,6 +35,10 @@ def _serialize_user(user: User) -> UserMeOut:
         email=user.email,
         status=user.status.value,
         phone=user.phone,
+        name=user.name,
+        role=user.role.value if user.role else None,
+        department=user.department,
+        is_active=user.is_active,
         terms_of_service=user.terms_of_service,
         privacy_policy_agreement=user.privacy_policy_agreement,
         created_at=user.created_at.isoformat(),
@@ -89,11 +93,22 @@ async def signup(data: UserSignupIn, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="개인정보 수집 및 이용 동의에 동의해주세요.")
 
     try:
+        from app.models.user import UserRole
+        role = None
+        if data.role:
+            for r in UserRole:
+                if r.value == data.role:
+                    role = r
+                    break
+
         user = User(
             username=data.username,
             email=data.email,
             password=hash_password(data.password),
             phone=data.phone,
+            name=data.name,
+            role=role,
+            department=data.department,
             status=UserStatus.PENDING,
             terms_of_service=data.terms_of_service,
             privacy_policy_agreement=data.privacy_policy_agreement,
@@ -247,6 +262,22 @@ async def update_user(
 
     if data.phone is not None:
         user.phone = data.phone
+
+    if data.name is not None:
+        user.name = data.name
+
+    if data.role is not None:
+        from app.models.user import UserRole
+        for r in UserRole:
+            if r.value == data.role:
+                user.role = r
+                break
+
+    if data.department is not None:
+        user.department = data.department
+
+    if data.is_active is not None:
+        user.is_active = data.is_active
 
     await db.commit()
     await db.refresh(user)

@@ -13,7 +13,7 @@ settings.QDRANT_URL = "http://localhost:6333"
 settings.EMBEDDING_API_KEY = "test-embedding-api-key"
 
 from app.models.base import Base
-from app.models.user import User, UserStatus
+from app.models.user import User, UserStatus, UserRole
 from app.database import get_db
 from app.main import app
 
@@ -62,10 +62,12 @@ async def authenticated_client(client: AsyncClient, db_session: AsyncSession):
         "privacy_policy_agreement": True,
     })
 
-    # Manually approve user (set status to CONSULTANT)
+    # Manually approve user and set role
     result = await db_session.execute(select(User).where(User.username == "testuser"))
     user = result.scalar_one()
     user.status = UserStatus.ACTIVE
+    user.role = UserRole.DEV_MANAGER
+    user.name = "테스트유저"
     await db_session.commit()
 
     # Login
@@ -79,6 +81,43 @@ async def authenticated_client(client: AsyncClient, db_session: AsyncSession):
 
     client.headers["Authorization"] = f"Bearer {access_token}"
     return client
+
+
+@pytest_asyncio.fixture
+async def supervisor_client(db_session: AsyncSession):
+    """Create a supervisor user and return an authenticated client."""
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as sv_client:
+        await sv_client.post("/v1/auth/signup", json={
+            "username": "supervisoruser",
+            "password": "svpass123",
+            "password_confirm": "svpass123",
+            "terms_of_service": True,
+            "privacy_policy_agreement": True,
+        })
+
+        result = await db_session.execute(select(User).where(User.username == "supervisoruser"))
+        user = result.scalar_one()
+        user.status = UserStatus.ACTIVE
+        user.role = UserRole.SUPERVISOR
+        user.name = "슈퍼바이저"
+        await db_session.commit()
+
+        response = await sv_client.post("/v1/auth/login", json={
+            "username": "supervisoruser",
+            "password": "svpass123",
+        })
+
+        data = response.json()
+        access_token = data.get("access_token")
+        sv_client.headers["Authorization"] = f"Bearer {access_token}"
+        yield sv_client
+
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
@@ -96,6 +135,8 @@ async def admin_client(client: AsyncClient, db_session: AsyncSession):
     result = await db_session.execute(select(User).where(User.username == "adminuser"))
     user = result.scalar_one()
     user.status = UserStatus.ADMIN
+    user.role = UserRole.ADMIN
+    user.name = "관리자"
     await db_session.commit()
 
     response = await client.post("/v1/auth/login", json={
