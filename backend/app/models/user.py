@@ -7,44 +7,33 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModel, GUID
 
 
-class UserStatus(str, enum.Enum):
-    PENDING = "승인대기"
-    ADMIN = "관리자"
-    ACTIVE = "활성"
-    INACTIVE = "비활성유저"
-
-
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
-    EXECUTIVE = "executive"
-    DEV_MANAGER = "dev_manager"
-    DEV_STAFF = "dev_staff"
-    SUPERVISOR_MANAGER = "supervisor_manager"
+    MANAGER = "manager"
+    STAFF = "staff"
+
+
+class DepartmentType(str, enum.Enum):
+    DEV = "dev"
     SUPERVISOR = "supervisor"
+    EXECUTIVE = "executive"
+    ADMIN = "admin"
 
 
 class User(BaseModel):
     __tablename__ = "user"
 
-    username: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    password: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[UserStatus] = mapped_column(
-        Enum(UserStatus, values_callable=lambda x: [e.value for e in x]),
-        default=UserStatus.PENDING,
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
-    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    terms_of_service: Mapped[bool] = mapped_column(Boolean, default=False)
-    privacy_policy_agreement: Mapped[bool] = mapped_column(Boolean, default=False)
-
-    # 이비가푸드 추가 필드
-    name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    role: Mapped[UserRole | None] = mapped_column(
-        Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
+    department: Mapped[DepartmentType | None] = mapped_column(
+        Enum(DepartmentType, values_callable=lambda x: [e.value for e in x]),
         nullable=True,
     )
-    department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships

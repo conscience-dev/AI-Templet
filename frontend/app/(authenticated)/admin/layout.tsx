@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ShieldAlert, Users } from "lucide-react";
+import { ShieldAlert, Users, Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/use-auth";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const adminTabs = [
   { label: "사용자 관리", href: "/admin/users", icon: Users },
+  { label: "시스템 설정", href: "/admin/settings", icon: Settings },
 ];
 
 export default function AdminLayout({

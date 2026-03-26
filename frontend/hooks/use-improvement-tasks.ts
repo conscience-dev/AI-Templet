@@ -5,39 +5,33 @@ import { PaginatedResponse } from "@/hooks/use-prospects";
 
 // 개선 과제 타입
 export interface ImprovementTask {
-  id: number;
-  store_id: number;
-  store_name: string;
-  inspection_id: number | null;
+  id: string;
+  store_id: string;
+  store_name: string | null;
+  inspection_id: string | null;
   category: string;
-  title: string;
-  description: string;
-  status: string;
+  task_description: string;
   priority: string;
+  status: string;
   due_date: string | null;
-  assigned_to: number | null;
-  assigned_to_name: string | null;
-  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
 // 개선 과제 생성/수정 요청 타입
 export interface ImprovementTaskRequest {
-  store_id: number;
-  inspection_id?: number | null;
+  store_id: string;
+  inspection_id?: string | null;
   category: string;
-  title: string;
-  description?: string;
-  status?: string;
+  task_description: string;
   priority?: string;
+  status?: string;
   due_date?: string | null;
-  assigned_to?: number | null;
 }
 
 // 필터 파라미터 타입
 interface ImprovementTaskParams {
-  store_id?: number;
+  store_id?: string;
   category?: string;
   status?: string;
   search?: string;
@@ -54,7 +48,7 @@ export function useImprovementTasks(params?: ImprovementTaskParams) {
 }
 
 // 개선 과제 상세 조회
-export function useImprovementTask(id: number | null) {
+export function useImprovementTask(id: string | null) {
   return useQuery<ImprovementTask>({
     queryKey: ["improvement-tasks", id],
     queryFn: () =>
@@ -88,7 +82,7 @@ export function useUpdateImprovementTask() {
       id,
       data,
     }: {
-      id: number;
+      id: string;
       data: Partial<ImprovementTaskRequest>;
     }) =>
       api.patch(`/v1/improvement-tasks/${id}`, data).then((res) => res.data),
@@ -101,25 +95,12 @@ export function useUpdateImprovementTask() {
   });
 }
 
-// 개선 과제 삭제
-export function useDeleteImprovementTask() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) =>
-      api.delete(`/v1/improvement-tasks/${id}`).then((res) => res.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["improvement-tasks"] });
-    },
-  });
-}
-
 // 개선 과제 상태 변경
 export function useUpdateImprovementTaskStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, status }: { id: number; status: string }) =>
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
       api
         .patch(`/v1/improvement-tasks/${id}/status`, { status })
         .then((res) => res.data),

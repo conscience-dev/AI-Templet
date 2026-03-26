@@ -9,8 +9,9 @@ class ProspectCreateIn(BaseModel):
     inquiry_path: str  # Enum value: 매장방문, 매체광고, 인터넷검색, 소개추천, 기타
     hope_region: Optional[str] = None
     startup_budget: Optional[int] = None
-    tasted: bool = False
     status: str = "신규"
+    assigned_user_id: Optional[str] = None
+    memo: Optional[str] = None
 
 
 class ProspectUpdateIn(BaseModel):
@@ -20,8 +21,9 @@ class ProspectUpdateIn(BaseModel):
     inquiry_path: Optional[str] = None
     hope_region: Optional[str] = None
     startup_budget: Optional[int] = None
-    tasted: Optional[bool] = None
     status: Optional[str] = None
+    assigned_user_id: Optional[str] = None
+    memo: Optional[str] = None
 
 
 class ProspectOut(BaseModel):
@@ -32,14 +34,9 @@ class ProspectOut(BaseModel):
     inquiry_path: str
     hope_region: Optional[str] = None
     startup_budget: Optional[int] = None
-    tasted: bool
     status: str
+    assigned_user_id: Optional[str] = None
+    assigned_user_name: Optional[str] = None
+    memo: Optional[str] = None
     created_at: str
     updated_at: str
-
-
-class ConversionAnalyticsOut(BaseModel):
-    total_prospects: int
-    status_counts: dict  # {"신규": 10, "진행중": 5, "성약": 3, "종료": 2}
-    conversion_rate: float  # 성약 / 전체 비율
-    avg_consultations_to_contract: Optional[float] = None  # 성약까지 평균 상담 횟수

@@ -1,406 +1,572 @@
-# SPEC — 이비가푸드 AI 자산화 업무툴
+# SPEC — 이비가푸드 AI 자산화 업무툴 (프로토타입 범위 축소본)
+
+## 0. 프로토타입 목표
+
+이 프로토타입의 목적은 **전체 운영 시스템을 완성하는 것**이 아니라,
+이비가푸드 본사 실무자가 아래 3가지를 실제로 체감하도록 만드는 데 있다.
+
+1. 가맹문의 상담 이력을 한곳에서 관리할 수 있다.
+2. 점포 점검 내용을 구조화해서 입력하고 후속조치를 추적할 수 있다.
+3. AI가 상담 요약 / 다음 액션 / 점검 기반 개선 항목 추천을 실무에 바로 도움되는 수준으로 제공한다.
+
+따라서 프로토타입은 다음 원칙으로 제한한다.
+
+* 복잡한 자동화 워크플로우는 제외
+* 고도화된 예측 AI는 제외
+* 역할/권한은 최소화
+* 모바일 앱, 실시간 연동, 외부 메신저 알림 제외
+* 운영 가능한 수준의 핵심 입력/조회/분석 흐름만 구현
+
+---
 
 ## 1. 프로젝트 기본정보
 
-| 항목 | 값 |
-|------|---|
-| 프로젝트 이름 | 이비가푸드 AI 자산화 업무툴 |
-| slug | ibiga-food-ai-asset-tool |
-| 설명 | 프랜차이즈 점포개발 상담 관리와 슈퍼바이저 점포 관리를 AI 기반으로 자동화하는 본사 업무 플랫폼 |
-| 개발사 | Amplab (대표: 김진영) |
-| 고객사 | 이비가푸드 |
-| 대상 독자 | 경영진/임원, 점포개발팀, 슈퍼바이저팀 |
+| 항목      | 값                                                                |
+| ------- | ---------------------------------------------------------------- |
+| 프로젝트 이름 | 이비가푸드 AI 자산화 업무툴                                                 |
+| slug    | ibiga-food-ai-asset-tool                                         |
+| 설명      | 프랜차이즈 점포개발 상담 관리와 슈퍼바이저 점검 관리를 통합하고, AI로 요약·추천을 제공하는 내부 업무 프로토타입 |
+| 개발사     | Amplab                                                           |
+| 고객사     | 이비가푸드                                                            |
+| 대상 독자   | 경영진/임원, 점포개발팀, 슈퍼바이저팀                                            |
+| 개발 목표   | 프로토타입(시연 및 PoC)                                                  |
 
-## 2. 사용자 역할 (Roles)
+---
 
-| slug | 이름 | 설명 | 권한 수준 |
-|------|------|------|----------|
-| `admin` | 시스템 관리자 | 전체 시스템 관리 및 사용자 관리 | 모든 리소스 CRUD + 사용자 관리 |
-| `executive` | 경영진 | 대시보드 조회, 전사 지표 모니터링 | 대시보드 조회, 보고서 생성 |
-| `dev_manager` | 점포개발 팀장 | 상담 이력 관리, 고객 전환 추적 | 상담 기록 CRUD, 고객 상태 변경 |
-| `dev_staff` | 점포개발 담당자 | 상담 진행, 고객 정보 입력 | 상담 기록 생성/수정, 고객 조회 |
-| `supervisor_manager` | 슈퍼바이저 팀장 | 점포 점검 결과 분석, 개선사항 추적 | 점검 기록 조회, 분석 리포트 생성 |
-| `supervisor` | 슈퍼바이저 | 점포 방문 점검, 점검 결과 입력 | 점검 기록 생성/수정 |
+## 2. 이번 프로토타입에서 구현할 범위
 
-## 3. 데이터 모델
+### 포함 범위
 
-### 모델: `Prospect` (가맹문의자)
+1. 가맹문의자 등록 / 조회 / 수정
+2. 상담 기록 등록 / 조회
+3. 상담 이력 AI 요약
+4. 다음 상담 액션 제안
+5. 점포 등록 / 조회
+6. 점포 점검 기록 등록 / 조회
+7. 점검 결과 기반 개선 과제 자동 생성
+8. 개선 과제 상태 변경
+9. 역할별 기본 대시보드
+10. 리포트 화면에서 기본 통계 조회
 
-| 필드명 | 타입 | 제약조건 | 설명 |
-|--------|------|---------|------|
-| `id` | String(36) | PK, UUID | 고유 식별자 |
-| `name` | String(100) | NOT NULL | 가맹문의자 이름 |
-| `phone` | String(20) | NOT NULL, UNIQUE | 연락처 |
-| `email` | String(100) | - | 이메일 주소 |
-| `inquiry_path` | Enum(매장방문, 매체광고, 인터넷검색, 소개추천, 기타) | NOT NULL | 문의 경로 |
-| `hope_region` | String(100) | - | 희망 지역 |
-| `startup_budget` | Integer | - | 창업 예산 (만원) |
-| `tasted` | Boolean | DEFAULT false | 매장 시식 여부 |
-| `created_at` | DateTime | NOT NULL, DEFAULT NOW() | 접수 일시 |
-| `updated_at` | DateTime | NOT NULL, DEFAULT NOW() | 수정 일시 |
-| `status` | Enum(신규, 진행중, 성약, 종료) | DEFAULT 신규 | 현재 상태 |
+### 제외 범위
 
-### 모델: `Consultation` (상담 기록)
+1. 정교한 권한 제어(Row-level permission)
+2. 계약/성약 이후 자동 점포 생성 워크플로우
+3. Slack/이메일/카카오 알림 연동
+4. WebSocket 기반 실시간 협업
+5. 음성 입력 / 통화 녹취 자동 수집
+6. 사진 AI 분석
+7. 예측 모델(성약 확률, 폐점 위험도 등)
+8. 복잡한 조직 구조/결재 기능
+9. 모바일 앱
+10. 고급 RAG 파이프라인
 
-| 필드명 | 타입 | 제약조건 | 설명 |
-|--------|------|---------|------|
-| `id` | String(36) | PK, UUID | 고유 식별자 |
-| `prospect_id` | String(36) | FK → Prospect, NOT NULL | 가맹문의자 ID |
-| `consultation_order` | Integer | NOT NULL | 상담 차수 (1차, 2차, ..., 8차) |
-| `consultant_id` | String(36) | FK → User, NOT NULL | 상담자 ID |
-| `consultation_date` | DateTime | NOT NULL | 상담 일시 |
-| `content` | Text | NOT NULL | 상담 내용 |
-| `result` | Enum(A가망고객, B지속고객, C종료의지없음) | NOT NULL | 상담 결과 |
-| `next_action` | Text | - | 다음 조치 사항 |
-| `created_at` | DateTime | NOT NULL, DEFAULT NOW() | 생성 일시 |
-| `updated_at` | DateTime | NOT NULL, DEFAULT NOW() | 수정 일시 |
+---
 
-### 모델: `Store` (가맹점)
+## 3. 사용자 역할 (프로토타입 축소본)
 
-| 필드명 | 타입 | 제약조건 | 설명 |
-|--------|------|---------|------|
-| `id` | String(36) | PK, UUID | 고유 식별자 |
-| `store_name` | String(100) | NOT NULL, UNIQUE | 점포명 (예: 부산해운대센텀점) |
-| `region` | String(100) | NOT NULL | 지역 |
-| `address` | String(200) | - | 주소 |
-| `supervisor_id` | String(36) | FK → User | 담당 슈퍼바이저 ID |
-| `store_size` | Integer | - | 점포 면적 (평) |
-| `opening_date` | DateTime | - | 개점 일시 |
-| `status` | Enum(운영중, 휴점, 폐점) | DEFAULT 운영중 | 점포 상태 |
-| `created_at` | DateTime | NOT NULL, DEFAULT NOW() | 생성 일시 |
-| `updated_at` | DateTime | NOT NULL, DEFAULT NOW() | 수정 일시 |
+프로토타입은 역할을 너무 잘게 나누지 않고 3개로 단순화한다.
 
-### 모델: `StoreInspection` (점포 점검 기록)
+| slug      | 이름     | 설명                      | 권한 수준        |
+| --------- | ------ | ----------------------- | ------------ |
+| `admin`   | 관리자    | 전체 데이터 관리, 사용자 계정 관리    | 모든 리소스 CRUD  |
+| `manager` | 팀장/관리자 | 상담/점검/개선과제/대시보드 조회 및 관리 | 대부분 기능 사용 가능 |
+| `staff`   | 실무자    | 상담 입력, 점검 입력, 본인 업무 조회  | 입력/조회 중심     |
 
-| 필드명 | 타입 | 제약조건 | 설명 |
-|--------|------|---------|------|
-| `id` | String(36) | PK, UUID | 고유 식별자 |
-| `store_id` | String(36) | FK → Store, NOT NULL | 점포 ID |
-| `supervisor_id` | String(36) | FK → User, NOT NULL | 점검자(슈퍼바이저) ID |
-| `inspection_date` | DateTime | NOT NULL | 점검 일시 |
-| `quality_status` | Enum(준수, 미흡) | NOT NULL | 품질 상태 (메뉴얼 준수 여부) |
-| `quality_notes` | Text | - | 품질 점검 내용 (면 물붓기, 염도, 야채 볶음 등) |
-| `hygiene_status` | Enum(양호, 미흡) | NOT NULL | 위생 상태 |
-| `hygiene_notes` | Text | - | 위생 점검 내용 (청소 요청 사항 등) |
-| `sales_amount` | Integer | - | 월 매출 (만원) |
-| `sales_yoy_change` | Float | - | 전년 동월 대비 매출 변화율 (%) |
-| `sales_mom_change` | Float | - | 전월 대비 매출 변화율 (%) |
-| `staff_count` | JSON | - | 직원 구성 (예: {"홀": 2, "주방": 3}) |
-| `market_change` | Text | - | 상권 변화 (신규 경쟁점포, 폐점 등) |
-| `owner_feedback` | Text | - | 점주 의견 및 요청사항 |
-| `improvement_items` | JSON | - | 개선 요청 사항 (카테고리별 배열) |
-| `created_at` | DateTime | NOT NULL, DEFAULT NOW() | 생성 일시 |
-| `updated_at` | DateTime | NOT NULL, DEFAULT NOW() | 수정 일시 |
+### 권한 원칙
 
-### 모델: `ImprovementTask` (개선 과제)
+* `admin`: 전체 기능 접근 가능
+* `manager`: Prospect, Consultation, Store, Inspection, ImprovementTask, Dashboard 접근 가능
+* `staff`: Prospect/Consultation/Inspection 입력 및 조회 가능, 대시보드는 제한적 조회
 
-| 필드명 | 타입 | 제약조건 | 설명 |
-|--------|------|---------|------|
-| `id` | String(36) | PK, UUID | 고유 식별자 |
-| `store_id` | String(36) | FK → Store, NOT NULL | 점포 ID |
-| `inspection_id` | String(36) | FK → StoreInspection | 원본 점검 기록 ID |
-| `category` | Enum(품질, 위생, 매출, 인력, 상권, 기타) | NOT NULL | 개선 카테고리 |
-| `task_description` | Text | NOT NULL | 개선 과제 설명 |
-| `priority` | Enum(높음, 중간, 낮음) | DEFAULT 중간 | 우선순위 |
-| `status` | Enum(미처리, 진행중, 완료, 보류) | DEFAULT 미처리 | 처리 상태 |
-| `due_date` | DateTime | - | 완료 예정일 |
-| `completed_date` | DateTime | - | 완료 일시 |
-| `completion_notes` | Text | - | 완료 내용 |
-| `created_at` | DateTime | NOT NULL, DEFAULT NOW() | 생성 일시 |
-| `updated_at` | DateTime | NOT NULL, DEFAULT NOW() | 수정 일시 |
+---
 
-### 모델: `User` (사용자)
+## 4. 핵심 사용자 시나리오
 
-| 필드명 | 타입 | 제약조건 | 설명 |
-|--------|------|---------|------|
-| `id` | String(36) | PK, UUID | 고유 식별자 |
-| `email` | String(100) | NOT NULL, UNIQUE | 이메일 |
-| `name` | String(100) | NOT NULL | 이름 |
-| `role` | Enum(admin, executive, dev_manager, dev_staff, supervisor_manager, supervisor) | NOT NULL | 역할 |
-| `department` | String(100) | - | 부서 (점포개발팀, 슈퍼바이저팀 등) |
-| `phone` | String(20) | - | 연락처 |
-| `is_active` | Boolean | DEFAULT true | 활성 여부 |
-| `created_at` | DateTime | NOT NULL, DEFAULT NOW() | 생성 일시 |
-| `updated_at` | DateTime | NOT NULL, DEFAULT NOW() | 수정 일시 |
+### 시나리오 A — 점포개발팀 상담 관리
 
-## 4. API 엔드포인트
+1. 실무자가 가맹문의자를 등록한다.
+2. 상담 기록을 누적 입력한다.
+3. AI가 기존 상담 내용을 요약한다.
+4. AI가 다음 상담 때 물어볼 질문과 권장 액션을 제안한다.
+5. 팀장이 전체 문의자 진행 현황과 전환 현황을 본다.
 
-### 리소스: `Prospect` (가맹문의자)
+### 시나리오 B — 슈퍼바이저 점검 관리
 
-**기본 CRUD**: `crud`
+1. 슈퍼바이저가 점포를 선택한다.
+2. 점검 결과(품질/위생/매출/점주의견)를 입력한다.
+3. AI가 개선 과제를 자동 추천한다.
+4. 팀장이 개선 과제 상태를 관리한다.
+5. 경영진/관리자가 점포별 상태와 누적 과제를 본다.
 
-**추가 엔드포인트**:
+---
 
-| 메서드 | 경로 | 설명 | 인증 | 권한 |
-|--------|------|------|------|------|
-| GET | `/prospects?status=&region=&page=1` | 가맹문의자 목록 조회 (필터/페이지네이션) | 필수 | dev_manager, dev_staff |
-| GET | `/prospects/{id}/consultations` | 특정 가맹문의자의 모든 상담 이력 조회 | 필수 | dev_manager, dev_staff |
-| GET | `/prospects/{id}/consultation-summary` | 상담 이력 AI 요약 조회 | 필수 | dev_manager, dev_staff |
-| POST | `/prospects/{id}/next-consultation-tips` | 다음 상담 팁 AI 생성 | 필수 | dev_manager, dev_staff |
-| GET | `/prospects/conversion-analytics` | 상담 전환율 분석 | 필수 | dev_manager, executive |
+## 5. 데이터 모델
 
-### 리소스: `Consultation` (상담 기록)
+프로토타입에서는 분석 가능성과 구현 난이도를 고려하여 JSON 사용을 최소화하고 핵심 필드만 유지한다.
 
-**기본 CRUD**: `crud`
+### 모델: `User`
 
-**추가 엔드포인트**:
+| 필드명             | 타입                                      | 제약조건             | 설명      |
+| --------------- | --------------------------------------- | ---------------- | ------- |
+| `id`            | UUID                                    | PK               | 사용자 ID  |
+| `email`         | String                                  | NOT NULL, UNIQUE | 로그인 이메일 |
+| `password_hash` | String                                  | NOT NULL         | 비밀번호 해시 |
+| `name`          | String                                  | NOT NULL         | 이름      |
+| `role`          | Enum(admin, manager, staff)             | NOT NULL         | 역할      |
+| `department`    | Enum(dev, supervisor, executive, admin) | -                | 소속      |
+| `is_active`     | Boolean                                 | DEFAULT true     | 활성 여부   |
+| `created_at`    | DateTime                                | DEFAULT NOW()    | 생성일     |
+| `updated_at`    | DateTime                                | DEFAULT NOW()    | 수정일     |
 
-| 메서드 | 경로 | 설명 | 인증 | 권한 |
-|--------|------|------|------|------|
-| GET | `/consultations?prospect_id=&order=&page=1` | 상담 기록 목록 조회 | 필수 | dev_manager, dev_staff |
-| POST | `/consultations/{id}/ai-summary` | 상담 내용 AI 자동 요약 | 필수 | dev_manager, dev_staff |
-| GET | `/consultations/best-practices` | 우수 상담 사례 조회 | 필수 | dev_manager, dev_staff |
+### 모델: `Prospect`
 
-### 리소스: `Store` (가맹점)
+| 필드명                | 타입                                | 제약조건          | 설명        |
+| ------------------ | --------------------------------- | ------------- | --------- |
+| `id`               | UUID                              | PK            | 가맹문의자 ID  |
+| `name`             | String                            | NOT NULL      | 이름        |
+| `phone`            | String                            | NOT NULL      | 연락처       |
+| `email`            | String                            | -             | 이메일       |
+| `inquiry_path`     | Enum(매장방문, 매체광고, 인터넷검색, 소개추천, 기타) | NOT NULL      | 문의 경로     |
+| `hope_region`      | String                            | -             | 희망 지역     |
+| `startup_budget`   | Integer                           | -             | 창업 예산(만원) |
+| `status`           | Enum(신규, 상담중, 보류, 성약, 종료)         | DEFAULT 신규    | 상태        |
+| `assigned_user_id` | UUID                              | FK → User     | 담당자       |
+| `memo`             | Text                              | -             | 비고        |
+| `created_at`       | DateTime                          | DEFAULT NOW() | 생성일       |
+| `updated_at`       | DateTime                          | DEFAULT NOW() | 수정일       |
 
-**기본 CRUD**: `crud`
+### 모델: `Consultation`
 
-**추가 엔드포인트**:
+| 필드명                  | 타입                   | 제약조건                    | 설명       |
+| -------------------- | -------------------- | ----------------------- | -------- |
+| `id`                 | UUID                 | PK                      | 상담 ID    |
+| `prospect_id`        | UUID                 | FK → Prospect, NOT NULL | 문의자 ID   |
+| `consultation_order` | Integer              | NOT NULL                | 상담 차수    |
+| `consultant_id`      | UUID                 | FK → User, NOT NULL     | 상담자      |
+| `consultation_date`  | DateTime             | NOT NULL                | 상담 일시    |
+| `content`            | Text                 | NOT NULL                | 상담 내용    |
+| `result`             | Enum(긍정, 보통, 부정, 종료) | NOT NULL                | 상담 결과    |
+| `next_action`        | Text                 | -                       | 다음 액션 메모 |
+| `created_at`         | DateTime             | DEFAULT NOW()           | 생성일      |
+| `updated_at`         | DateTime             | DEFAULT NOW()           | 수정일      |
 
-| 메서드 | 경로 | 설명 | 인증 | 권한 |
-|--------|------|------|------|------|
-| GET | `/stores?region=&status=&supervisor_id=&page=1` | 점포 목록 조회 (필터/페이지네이션) | 필수 | supervisor_manager, supervisor, executive |
-| GET | `/stores/{id}/inspections` | 특정 점포의 점검 이력 조회 | 필수 | supervisor_manager, supervisor |
-| GET | `/stores/{id}/improvement-tasks` | 특정 점포의 개선 과제 조회 | 필수 | supervisor_manager, supervisor |
-| GET | `/stores/{id}/health-score` | 점포 건강도 점수 (품질, 위생, 매출 종합) | 필수 | supervisor_manager, executive |
+### 모델: `Store`
 
-### 리소스: `StoreInspection` (점포 점검)
+| 필드명             | 타입                | 제약조건          | 설명       |
+| --------------- | ----------------- | ------------- | -------- |
+| `id`            | UUID              | PK            | 점포 ID    |
+| `store_name`    | String            | NOT NULL      | 점포명      |
+| `region`        | String            | NOT NULL      | 지역       |
+| `address`       | String            | -             | 주소       |
+| `supervisor_id` | UUID              | FK → User     | 담당 슈퍼바이저 |
+| `status`        | Enum(운영중, 휴점, 폐점) | DEFAULT 운영중   | 점포 상태    |
+| `created_at`    | DateTime          | DEFAULT NOW() | 생성일      |
+| `updated_at`    | DateTime          | DEFAULT NOW() | 수정일      |
 
-**기본 CRUD**: `crud`
+### 모델: `StoreInspection`
 
-**추가 엔드포인트**:
+| 필드명               | 타입           | 제약조건                 | 설명       |
+| ----------------- | ------------ | -------------------- | -------- |
+| `id`              | UUID         | PK                   | 점검 ID    |
+| `store_id`        | UUID         | FK → Store, NOT NULL | 점포 ID    |
+| `supervisor_id`   | UUID         | FK → User, NOT NULL  | 점검자      |
+| `inspection_date` | DateTime     | NOT NULL             | 점검 일시    |
+| `quality_status`  | Enum(양호, 미흡) | NOT NULL             | 품질 상태    |
+| `quality_notes`   | Text         | -                    | 품질 메모    |
+| `hygiene_status`  | Enum(양호, 미흡) | NOT NULL             | 위생 상태    |
+| `hygiene_notes`   | Text         | -                    | 위생 메모    |
+| `sales_note`      | Text         | -                    | 매출 관련 메모 |
+| `owner_feedback`  | Text         | -                    | 점주 의견    |
+| `created_at`      | DateTime     | DEFAULT NOW()        | 생성일      |
+| `updated_at`      | DateTime     | DEFAULT NOW()        | 수정일      |
 
-| 메서드 | 경로 | 설명 | 인증 | 권한 |
-|--------|------|------|------|------|
-| GET | `/inspections?store_id=&date_from=&date_to=&page=1` | 점검 기록 목록 조회 | 필수 | supervisor_manager, supervisor |
-| POST | `/inspections/{id}/improvement-tasks-auto-create` | 점검 결과로부터 개선 과제 자동 생성 | 필수 | supervisor_manager |
-| GET | `/inspections/overdue-tasks` | 미처리 개선 과제 목록 | 필수 | supervisor_manager, executive |
+### 모델: `ImprovementTask`
 
-### 리소스: `ImprovementTask` (개선 과제)
+| 필드명                | 타입                       | 제약조건                           | 설명       |
+| ------------------ | ------------------------ | ------------------------------ | -------- |
+| `id`               | UUID                     | PK                             | 과제 ID    |
+| `store_id`         | UUID                     | FK → Store, NOT NULL           | 점포 ID    |
+| `inspection_id`    | UUID                     | FK → StoreInspection, NOT NULL | 원본 점검 ID |
+| `category`         | Enum(품질, 위생, 매출, 운영, 기타) | NOT NULL                       | 카테고리     |
+| `task_description` | Text                     | NOT NULL                       | 과제 내용    |
+| `priority`         | Enum(높음, 중간, 낮음)         | DEFAULT 중간                     | 우선순위     |
+| `status`           | Enum(미처리, 진행중, 완료)       | DEFAULT 미처리                    | 처리 상태    |
+| `due_date`         | Date                     | -                              | 목표 완료일   |
+| `created_at`       | DateTime                 | DEFAULT NOW()                  | 생성일      |
+| `updated_at`       | DateTime                 | DEFAULT NOW()                  | 수정일      |
 
-**기본 CRUD**: `crud`
+---
 
-**추가 엔드포인트**:
+## 6. 핵심 AI 기능 정의
 
-| 메서드 | 경로 | 설명 | 인증 | 권한 |
-|--------|------|------|------|------|
-| GET | `/improvement-tasks?store_id=&category=&status=&page=1` | 개선 과제 목록 조회 (카테고리/상태 필터) | 필수 | supervisor_manager, supervisor |
-| PATCH | `/improvement-tasks/{id}/status` | 개선 과제 상태 변경 | 필수 | supervisor_manager, supervisor |
-| GET | `/improvement-tasks/priority-ranking` | 우선순위별 개선 과제 랭킹 | 필수 | supervisor_manager, executive |
+프로토타입에서는 AI 기능을 2개 흐름으로만 제한한다.
 
-### 리소스: `Dashboard` (대시보드)
+### AI 기능 1 — 상담 이력 요약
 
-| 메서드 | 경로 | 설명 | 인증 | 권한 |
-|--------|------|------|------|------|
-| GET | `/dashboard/executive-summary` | 경영진 대시보드 (전사 지표 요약) | 필수 | executive |
-| GET | `/dashboard/dev-team-metrics` | 점포개발팀 대시보드 (상담 전환율, 진행 현황) | 필수 | dev_manager, dev_staff |
-| GET | `/dashboard/supervisor-metrics` | 슈퍼바이저 대시보드 (점포별 건강도, 개선 과제) | 필수 | supervisor_manager, supervisor |
+입력:
 
-## 5. 페이지 구성
+* 특정 Prospect의 전체 Consultation 목록
 
-| 경로 | 페이지명 | 레이아웃 | 인증 | 구성 요소 |
-|------|---------|---------|------|----------|
-| `/login` | 로그인 | public | 불필요 | 이메일/비밀번호 입력 폼, 로그인 버튼 |
-| `/dashboard` | 대시보드 (역할별) | authenticated | 필수 | 역할별 주요 지표 카드, 최근 활동 목록, 경고 알림 |
-| `/prospects` | 가맹문의자 관리 | authenticated | 필수 | 가맹문의자 목록 테이블 (이름, 지역, 상태, 최근 상담일), 상태별 필터 탭, 검색 바, 신규 등록 버튼 |
-| `/prospects/{id}` | 가맹문의자 상세 | authenticated | 필수 | 기본 정보, 상담 이력 타임라인, AI 요약 (이전 상담 내용 요약), 다음 상담 팁 (AI 생성), 상담 기록 추가 버튼 |
-| `/consultations` | 상담 기록 관리 | authenticated | 필수 | 상담 기록 목록 (상담자, 상담일, 상담 차수, 결과), 가맹문의자별 필터, 상담 차수별 필터, 상담 기록 상세 조회 |
-| `/consultations/new` | 상담 기록 입력 | authenticated | 필수 | 가맹문의자 선택, 상담 차수 자동 계산, 상담 내용 입력 (텍스트 에디터), 상담 결과 선택, 다음 조치 입력, 저장 버튼 |
-| `/stores` | 점포 관리 | authenticated | 필수 | 점포 목록 테이블 (점포명, 지역, 슈퍼바이저, 상태, 최근 점검일), 지역별/상태별 필터, 슈퍼바이저별 필터, 검색 바 |
-| `/stores/{id}` | 점포 상세 | authenticated | 필수 | 기본 정보, 건강도 점수 (품질/위생/매출 종합), 최근 점검 결과, 개선 과제 목록 (카테고리별, 상태별), 점검 기록 추가 버튼 |
-| `/inspections` | 점포 점검 관리 | authenticated | 필수 | 점검 기록 목록 (점포명, 점검일, 품질/위생 상태, 매출), 점포별 필터, 날짜 범위 필터, 상태별 필터 |
-| `/inspections/new` | 점포 점검 입력 | authenticated | 필수 | 점포 선택, 점검 항목 입력 (품질, 위생, 매출, 직원, 상권, 점주 의견), 개선 요청 사항 입력, 사진 첨부 (선택), 저장 버튼 |
-| `/improvement-tasks` | 개선 과제 관리 | authenticated | 필수 | 개선 과제 목록 (점포명, 카테고리, 설명, 우선순위, 상태, 완료예정일), 카테고리별 필터, 상태별 필터, 우선순위 정렬, 상태 변경 버튼 |
-| `/reports` | 분석 리포트 | authenticated | 필수 | 상담 전환율 분석 (월별 추이 그래프), 점포 건강도 분석 (지역별/슈퍼바이저별), 개선 과제 진행률 (카테고리별), 매출 분석 (점포별 비교), 리포트 다운로드 버튼 (CSV/PDF) |
+출력:
 
-## 6. 레이아웃
+* 핵심 관심사
+* 현재 진행 단계
+* 고객 우려사항
+* 이전 상담 핵심 포인트 3~5개
+
+### AI 기능 2 — 다음 상담 액션 제안
+
+입력:
+
+* Prospect 기본정보
+* 최근 상담 내용
+* 전체 상담 이력 요약
+
+출력:
+
+* 다음 상담에서 꼭 물어봐야 할 질문
+* 설득 포인트
+* 주의할 리스크
+* 추천 다음 액션
+
+### AI 기능 3 — 점검 결과 기반 개선 과제 추천
+
+입력:
+
+* StoreInspection 데이터
+
+출력:
+
+* 카테고리별 개선 과제 1~5건
+* 우선순위
+* 추천 조치 문장
+
+### 비포함 AI 기능
+
+* 성약 확률 예측
+* 폐점 위험도 예측
+* 상담 품질 자동 채점
+* 이미지 분석
+* 고급 벡터검색 기반 RAG
+
+---
+
+## 7. API 엔드포인트
+
+프로토타입에서는 화면 구현에 필요한 최소 API만 정의한다.
+
+### Auth
+
+| 메서드  | 경로             | 설명      |
+| ---- | -------------- | ------- |
+| POST | `/auth/login`  | 로그인     |
+| POST | `/auth/logout` | 로그아웃    |
+| GET  | `/auth/me`     | 내 정보 조회 |
+
+### Prospect
+
+| 메서드   | 경로                | 설명          |
+| ----- | ----------------- | ----------- |
+| GET   | `/prospects`      | 가맹문의자 목록 조회 |
+| POST  | `/prospects`      | 가맹문의자 등록    |
+| GET   | `/prospects/{id}` | 가맹문의자 상세 조회 |
+| PATCH | `/prospects/{id}` | 가맹문의자 수정    |
+
+### Consultation
+
+| 메서드  | 경로                              | 설명               |
+| ---- | ------------------------------- | ---------------- |
+| GET  | `/prospects/{id}/consultations` | 특정 문의자의 상담 목록 조회 |
+| POST | `/prospects/{id}/consultations` | 상담 기록 등록         |
+| GET  | `/consultations/{id}`           | 상담 상세 조회         |
+| POST | `/prospects/{id}/ai-summary`    | 상담 이력 AI 요약 생성   |
+| POST | `/prospects/{id}/next-action`   | 다음 상담 액션 제안 생성   |
+
+### Store
+
+| 메서드   | 경로             | 설명       |
+| ----- | -------------- | -------- |
+| GET   | `/stores`      | 점포 목록 조회 |
+| POST  | `/stores`      | 점포 등록    |
+| GET   | `/stores/{id}` | 점포 상세 조회 |
+| PATCH | `/stores/{id}` | 점포 수정    |
+
+### Inspection
+
+| 메서드  | 경로                                 | 설명                |
+| ---- | ---------------------------------- | ----------------- |
+| GET  | `/stores/{id}/inspections`         | 특정 점포 점검 목록 조회    |
+| POST | `/stores/{id}/inspections`         | 점검 기록 등록          |
+| GET  | `/inspections/{id}`                | 점검 상세 조회          |
+| POST | `/inspections/{id}/generate-tasks` | AI 기반 개선 과제 추천 생성 |
+
+### ImprovementTask
+
+| 메서드   | 경로                               | 설명          |
+| ----- | -------------------------------- | ----------- |
+| GET   | `/improvement-tasks`             | 개선 과제 목록 조회 |
+| POST  | `/improvement-tasks`             | 개선 과제 등록    |
+| PATCH | `/improvement-tasks/{id}`        | 개선 과제 수정    |
+| PATCH | `/improvement-tasks/{id}/status` | 상태 변경       |
+
+### Dashboard
+
+| 메서드 | 경로                            | 설명          |
+| --- | ----------------------------- | ----------- |
+| GET | `/dashboard/summary`          | 요약 지표 조회    |
+| GET | `/dashboard/prospect-metrics` | 상담 관련 지표    |
+| GET | `/dashboard/store-metrics`    | 점포/과제 관련 지표 |
+
+---
+
+## 8. 페이지 구성
+
+### 1) 로그인 `/login`
+
+* 이메일 입력
+* 비밀번호 입력
+* 로그인 버튼
+
+### 2) 대시보드 `/dashboard`
+
+구성:
+
+* 총 가맹문의 수
+* 상담중 문의 수
+* 성약 수
+* 점포 수
+* 미처리 개선 과제 수
+* 최근 상담 기록
+* 최근 점검 기록
+
+### 3) 가맹문의자 목록 `/prospects`
+
+구성:
+
+* 검색
+* 상태 필터
+* 담당자 필터
+* 문의자 테이블
+* 신규 등록 버튼
+
+### 4) 가맹문의자 상세 `/prospects/{id}`
+
+구성:
+
+* 기본 정보 카드
+* 상담 이력 타임라인
+* 상담 추가 버튼
+* AI 요약 영역
+* 다음 액션 제안 영역
+
+### 5) 상담 입력 `/prospects/{id}/consultations/new`
+
+구성:
+
+* 상담 차수
+* 상담 일시
+* 상담 내용
+* 상담 결과
+* 다음 액션 메모
+* 저장 버튼
+
+### 6) 점포 목록 `/stores`
+
+구성:
+
+* 지역 필터
+* 상태 필터
+* 점포 테이블
+* 신규 등록 버튼
+
+### 7) 점포 상세 `/stores/{id}`
+
+구성:
+
+* 점포 기본 정보
+* 최근 점검 이력
+* 개선 과제 목록
+* 점검 추가 버튼
+
+### 8) 점검 입력 `/stores/{id}/inspections/new`
+
+구성:
+
+* 품질 상태
+* 품질 메모
+* 위생 상태
+* 위생 메모
+* 매출 메모
+* 점주 의견
+* 저장 버튼
+* AI 개선 과제 추천 버튼
+
+### 9) 개선 과제 목록 `/improvement-tasks`
+
+구성:
+
+* 상태 필터
+* 카테고리 필터
+* 우선순위 정렬
+* 과제 목록 테이블
+* 상태 변경 액션
+
+### 10) 리포트 `/reports`
+
+구성:
+
+* 월별 상담 건수
+* 상태별 문의 분포
+* 점포별 미처리 과제 수
+* 카테고리별 개선 과제 분포
+
+---
+
+## 9. UX 원칙
+
+프로토타입은 화려함보다 **빠른 입력과 명확한 조회**를 우선한다.
+
+### UX 기준
+
+* 입력은 최대한 단순한 폼으로 구성
+* 목록 화면에서 검색/필터 우선 제공
+* AI 결과는 카드형 요약으로 노출
+* 모든 상세 화면에서 “다음 행동”이 바로 보이게 구성
+* 모바일 최적화는 최소 대응만 수행
+
+---
+
+## 10. 레이아웃 / 메뉴
 
 ### 사이드바 메뉴
 
-| 메뉴명 | 경로 | 아이콘 (lucide) | 역할 제한 |
-|--------|------|----------------|----------|
-| 대시보드 | `/dashboard` | LayoutDashboard | 모든 역할 |
-| 가맹문의자 | `/prospects` | Users | dev_manager, dev_staff, executive |
-| 상담 기록 | `/consultations` | MessageSquare | dev_manager, dev_staff |
-| 점포 관리 | `/stores` | Store | supervisor_manager, supervisor, executive |
-| 점포 점검 | `/inspections` | CheckCircle | supervisor_manager, supervisor |
-| 개선 과제 | `/improvement-tasks` | ListTodo | supervisor_manager, supervisor, executive |
-| 분석 리포트 | `/reports` | BarChart3 | supervisor_manager, dev_manager, executive |
-| 사용자 관리 | `/admin/users` | Settings | admin |
+| 메뉴명    | 경로                   |
+| ------ | -------------------- |
+| 대시보드   | `/dashboard`         |
+| 가맹문의자  | `/prospects`         |
+| 점포     | `/stores`            |
+| 개선 과제  | `/improvement-tasks` |
+| 리포트    | `/reports`           |
+| 사용자 관리 | `/admin/users`       |
 
-## 7. 추가 기능
+---
 
-- [x] 파일 업로드 (점포 점검 시 사진 첨부)
-- [x] 실시간 알림 (WebSocket) - 미처리 개선 과제, 점포 건강도 악화 알림
-- [x] 검색 + 필터 (가맹문의자, 점포, 개선 과제 등)
-- [x] 내보내기 (CSV/Excel/PDF) - 상담 기록, 점검 결과, 개선 과제, 분석 리포트
-- [x] AI 기반 자동 요약 및 분석 (상담 내용 요약, 다음 상담 팁, 개선 과제 자동 생성)
-- [x] 다크 모드
+## 11. 기술 스택
 
-## 8. 배포 설정
-
-| 항목 | 값 |
-|------|---|
-| 플랫폼 | Railway |
-| DB | PostgreSQL (Railway Addon) |
-| 백엔드 | Node.js/Express 또는 Python/FastAPI |
+| 항목    | 값                                 |
+| ----- | --------------------------------- |
 | 프론트엔드 | React + TypeScript + Tailwind CSS |
-| 인증 | JWT (Access Token + Refresh Token) |
-| 파일 저장소 | AWS S3 또는 Railway 스토리지 |
+| 백엔드   | FastAPI 또는 Express                |
+| DB    | PostgreSQL                        |
+| 인증    | JWT 기반 로그인                        |
+| 배포    | Railway                           |
+| AI 호출 | Claude API                        |
 
-## 9. 에이전트 설정
+### 선택 원칙
 
-### 메인 에이전트: 상담 이력 분석 및 최적화 에이전트
+* 프로토타입 속도를 위해 SSR 없이 SPA 우선
+* 파일 업로드는 이번 범위에서 제외 또는 최소화
+* 복잡한 메시지큐/이벤트버스는 도입하지 않음
 
-| 항목 | 값 |
-|------|---|
-| 에이전트 이름 | ConsultationOptimizer |
-| LLM | Claude 3.5 Sonnet |
-| Temperature | 0.7 |
-| Max Tokens | 2000 |
+---
 
-### 시스템 프롬프트
+## 12. 에이전트 설정
 
-```
-당신은 프랜차이즈 점포개발 상담 전문가입니다. 
-다음 역할을 수행합니다:
+### 메인 에이전트: `ConsultationAssistant`
 
-1. **상담 이력 통합 요약**: 가맹문의자의 모든 상담 기록을 분석하여 
-   - 고객의 주요 관심사 (지역, 예산, 브랜드 이해도)
-   - 상담 진행 상황 (현재 단계, 의사결정 수준)
-   - 이전 상담에서 논의된 핵심 내용
-   을 명확하게 정리합니다.
+목적:
 
-2. **다음 상담 팁 생성**: 다음 상담자를 위해
-   - 빠트린 질문 항목 (예: 자금 조달 방법, 운영 경험, 가족 동의 여부)
-   - 고객의 우려사항 해결 방안
-   - 우수 상담 사례 벤치마킹 포인트
-   - 상담 스크립트 제안
-   을 제공합니다.
+* 상담 이력 요약
+* 다음 상담 액션 제안
 
-3. **우수 상담 사례 학습**: 높은 전환율을 보인 상담 기록을 분석하여
-   - 효과적인 상담 구조
-   - 고객 신뢰 구축 방법
-   - 이의 제기 대응 방법
-   을 도출합니다.
+시스템 프롬프트 요약:
 
-4. **상담 품질 평가**: 각 상담 기록에 대해
-   - 상담 완성도 점수 (0-100)
-   - 개선 필요 영역
-   - 강점 분석
-   을 제공합니다.
+* 프랜차이즈 상담 실무자 관점으로 응답
+* 요약은 짧고 구조적으로 작성
+* 실행 가능한 다음 액션 중심으로 제안
+* 장황한 설명보다 실무 활용도를 우선
 
-모든 응답은 실무자가 즉시 활용할 수 있도록 
-구체적이고 실행 가능한 형태로 제시하세요.
-```
+### 서브 에이전트: `InspectionTaskAssistant`
 
-### 서브에이전트: 점포 건강도 분석 에이전트
+목적:
 
-| 이름 | 설명 | 도구 |
-|------|------|------|
-| StoreHealthAnalyzer | 점포 점검 결과를 분석하여 건강도 점수 산출 및 개선 과제 자동 생성 | 점검 데이터 조회, 매출 분석, 개선 과제 생성 |
+* 점검 결과를 바탕으로 개선 과제 도출
 
-### 커스텀 도구
+시스템 프롬프트 요약:
 
-| 도구 | 설명 |
-|------|------|
-| `get_prospect_consultation_history` | 가맹문의자의 모든 상담 기록 조회 |
-| `get_best_consultation_examples` | 전환율 상위 상담 사례 조회 |
-| `generate_consultation_summary` | 상담 이력 자동 요약 생성 |
-| `generate_next_consultation_tips` | 다음 상담 팁 생성 |
-| `get_store_inspection_history` | 점포의 모든 점검 기록 조회 |
-| `analyze_store_health` | 점포 건강도 분석 (품질, 위생, 매출) |
-| `auto_create_improvement_tasks` | 점검 결과로부터 개선 과제 자동 생성 |
-| `get_improvement_task_status` | 개선 과제 진행 상황 조회 |
+* 품질/위생/운영 기준 위반 요소를 식별
+* 추상적인 문장이 아니라 실행 가능한 과제 형태로 출력
+* 우선순위를 반드시 부여
 
-### RAG 소스
+---
 
-| 소스 | 타입 | 설명 |
-|------|------|------|
-| 상담 이력 데이터베이스 | 구조화 데이터 | 모든 가맹문의자의 상담 기록 (1차~8차) |
-| 점포 점검 데이터베이스 | 구조화 데이터 | 모든 점포의 점검 결과 및 개선 과제 |
-| 우수 상담 사례 문서 | 비정형 데이터 | 높은 전환율을 보인 상담 기록 및 분석 |
-| 프랜차이즈 운영 매뉴얼 | 비정형 데이터 | 점포개발, 슈퍼바이저 관리 관련 내부 문서 |
-| 점포 운영 가이드 | 비정형 데이터 | 품질, 위생, 매출 관리 기준 및 체크리스트 |
+## 13. 성공 기준 (프로토타입 완료 판단 기준)
 
-## 10. 디자인 요구사항
+다음 조건을 만족하면 프로토타입 완료로 본다.
 
-### 브랜드 컬러
+1. 실무자가 가맹문의자를 등록하고 상담 이력을 3건 이상 누적 입력할 수 있다.
+2. 누적 상담 기록에 대해 AI 요약과 다음 액션 제안이 정상 동작한다.
+3. 점포 점검 기록을 등록하고 개선 과제를 추천받을 수 있다.
+4. 개선 과제 상태를 목록에서 변경할 수 있다.
+5. 대시보드에서 핵심 현황을 한눈에 볼 수 있다.
+6. 데모 시나리오 기준으로 처음 보는 사용자도 10분 내 핵심 흐름을 이해할 수 있다.
 
-| 용도 | 색상 | Tailwind |
-|------|------|---------|
-| 주색 (Primary) | #FF6B35 (이비가 브랜드 오렌지) | `bg-orange-500` |
-| 보조색 (Secondary) | #004E89 (신뢰감 파란색) | `bg-blue-900` |
-| 성공 (Success) | #06A77D (초록색) | `bg-emerald-500` |
-| 경고 (Warning) | #F7B801 (노란색) | `bg-amber-400` |
-| 위험 (Danger) | #D62828 (빨간색) | `bg-red-600` |
-| 배경 (Background) | #F8F9FA (밝은 회색) | `bg-gray-50` |
-| 텍스트 (Text) | #2C3E50 (진한 회색) | `text-gray-800` |
+---
 
-### 레이아웃 원칙
+## 14. 데모 시나리오
 
-- **여백**: 기본 여백 16px (Tailwind `p-4`), 섹션 간 32px (`p-8`)
-- **최대 너비**: 1400px (대형 모니터 대응)
-- **카드 스타일**: 흰색 배경, 1px 회색 테두리, 8px 모서리 반경, 가벼운 그림자
-- **타이포그래피**: 
-  - 제목: Inter Bold 24px (h1), 20px (h2), 16px (h3)
-  - 본문: Inter Regular 14px
-  - 라벨: Inter Medium 12px
-- **반응형**: 모바일(320px), 태블릿(768px), 데스크톱(1024px+) 대응
+### 데모 1 — 상담 AI
 
-### 컴포넌트 명세
+* Prospect 생성
+* 상담 2~3건 등록
+* AI 요약 실행
+* 다음 액션 제안 확인
 
-#### 대시보드 카드
-```
-- 배경: bg-white
-- 테두리: border border-gray-200
-- 모서리: rounded-lg
-- 패딩: p-6
-- 그림자: shadow-sm
-- 제목: text-lg font-semibold text-gray-900
-- 값: text-3xl font-bold text-orange-500
-- 부제: text-sm text-gray-500
-```
+### 데모 2 — 점검 AI
 
-#### 상태 배지
-```
-- 신규: bg-blue-100 text-blue-800
-- 진행중: bg-amber-100 text-amber-800
-- 성약: bg-emerald-100 text-emerald-800
-- 종료: bg-gray-100 text-gray-800
-- 미처리: bg-red-100 text-red-800
-- 완료: bg-emerald-100 text-emerald-800
-```
+* Store 생성
+* 점검 입력
+* 개선 과제 추천 생성
+* 개선 과제 상태 변경
 
-#### 테이블
-```
-- 헤더: bg-gray-50 border-b border-gray-200
-- 행: border-b border-gray-100 hover:bg-gray-50
-- 셀 패딩: px-6 py-4
-- 텍스트: text-sm text-gray-900
-```
+### 데모 3 — 관리자 시야
 
-#### 버튼
-```
-- 주 버튼: bg-orange-500 text-white hover:bg-orange-600 px-4 py-2 rounded-lg
-- 보조 버튼: bg-gray-200 text-gray-900 hover:bg-gray-300 px-4 py-2 rounded-lg
-- 위험 버튼: bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-lg
-- 크기: sm(px-3 py-1), md(px-4 py-2), lg(px-6 py-3)
-```
+* 대시보드에서 상담 현황 / 점포 현황 / 미처리 과제 확인
 
-#### 입력 필드
-```
-- 배경: bg-white
-- 테두리: border border-gray-300 focus:border-orange-500
-- 모서리: rounded-lg
-- 패딩: px-4 py-2
-- 포커스: ring-2 ring-orange-200
-```
+---
 
-#### 필터 탭
-```
-- 활성 탭: border-b-2 border-orange-500 text-orange-500 font-semibold
-- 비활성 탭: border-b-2 border-transparent text-gray-600 hover:text-gray-900
-- 패딩: px-4 py-2
-```
+## 15. 개발 우선순위
 
+### P1 (반드시 구현)
+
+* 로그인
+* Prospect CRUD
+* Consultation 등록/조회
+* Store CRUD
+* Inspection 등록/조회
+* ImprovementTask 목록/상태변경
+* AI 요약/추천 2종
+* 기본 대시보드
+
+### P2 (여유 있으면 구현)
+
+* 리포트 화면 고도화
+* CSV 다운로드
+* 사용자 관리 화면
+* 담당자별 필터 고도화
+
+### P3 (이번 프로토타입 제외)
+
+* 자동 워크플로우
+* 외부 알림 연동
+* 예측 모델
+* 이미지 분석
+* 모바일 앱
+
+---
+
+## 16. 한줄 정의
+
+이 프로토타입은 **이비가푸드 본사의 상담 관리와 점포 점검 업무를 AI로 보조하는 내부 운영툴 PoC**이며,
+핵심은 **실무자의 입력 부담을 크게 늘리지 않으면서 상담/점검 데이터를 구조화하고, AI가 즉시 활용 가능한 요약과 후속 액션을 제안하는 것**이다.

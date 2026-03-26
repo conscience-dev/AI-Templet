@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,17 +14,16 @@ from app.schemas.improvement_task import (
     ImprovementTaskStatusUpdateIn,
     ImprovementTaskOut,
 )
-from app.schemas.common import SuccessOut
 from app.dependencies import get_current_user
 from app.utils.pagination import PaginatedResponse, paginate
 
 router = APIRouter()
 
-TASK_ROLES = [UserRole.ADMIN, UserRole.SUPERVISOR_MANAGER, UserRole.SUPERVISOR, UserRole.EXECUTIVE]
-
-
 def _check_task_permission(user: User):
-    if user.role not in TASK_ROLES:
+    if user.role == UserRole.ADMIN:
+        return
+    from app.models.user import DepartmentType
+    if user.department not in [DepartmentType.SUPERVISOR, DepartmentType.EXECUTIVE]:
         raise HTTPException(status_code=403, detail="개선 과제 관련 권한이 필요합니다.")
 
 
@@ -39,8 +38,6 @@ def _serialize_task(t: ImprovementTask, store_name: str = None) -> ImprovementTa
         priority=t.priority.value,
         status=t.status.value,
         due_date=t.due_date.isoformat() if t.due_date else None,
-        completed_date=t.completed_date.isoformat() if t.completed_date else None,
-        completion_notes=t.completion_notes,
         created_at=t.created_at.isoformat(),
         updated_at=t.updated_at.isoformat(),
     )
@@ -144,38 +141,6 @@ async def list_improvement_tasks(
     return paginate(serialized, page)
 
 
-@router.get("/priority-ranking", response_model=list[ImprovementTaskOut])
-async def get_priority_ranking(
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """우선순위별 개선 과제 랭킹 (미처리/진행중만)."""
-    if user.role not in [UserRole.ADMIN, UserRole.SUPERVISOR_MANAGER, UserRole.EXECUTIVE]:
-        raise HTTPException(status_code=403, detail="권한이 없습니다.")
-
-    # 우선순위 높음 → 중간 → 낮음 순, 생성일 오래된 순
-    result = await db.execute(
-        select(ImprovementTask)
-        .options(selectinload(ImprovementTask.store))
-        .where(ImprovementTask.status.in_([TaskStatus.PENDING, TaskStatus.IN_PROGRESS]))
-        .order_by(
-            # 높음=1, 중간=2, 낮음=3 으로 정렬
-            ImprovementTask.priority.asc(),
-            ImprovementTask.created_at.asc(),
-        )
-    )
-    tasks = list(result.scalars().all())
-
-    # 한국어 enum 정렬이 제대로 안 될 수 있으므로 수동 정렬
-    priority_order = {"높음": 0, "중간": 1, "낮음": 2}
-    tasks.sort(key=lambda t: (priority_order.get(t.priority.value, 9), t.created_at))
-
-    return [
-        _serialize_task(t, store_name=t.store.store_name if t.store else None)
-        for t in tasks
-    ]
-
-
 @router.get("/{task_id}", response_model=ImprovementTaskOut)
 async def get_improvement_task(
     task_id: str,
@@ -238,13 +203,6 @@ async def update_improvement_task(
             task.due_date = datetime.fromisoformat(data.due_date)
         except ValueError:
             raise HTTPException(status_code=400, detail="유효하지 않은 완료예정일 형식입니다.")
-    if data.completed_date is not None:
-        try:
-            task.completed_date = datetime.fromisoformat(data.completed_date)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="유효하지 않은 완료일시 형식입니다.")
-    if data.completion_notes is not None:
-        task.completion_notes = data.completion_notes
 
     await db.commit()
     await db.refresh(task)
@@ -268,8 +226,7 @@ async def update_task_status(
     db: AsyncSession = Depends(get_db),
 ):
     """개선 과제 상태 변경."""
-    if user.role not in [UserRole.ADMIN, UserRole.SUPERVISOR_MANAGER, UserRole.SUPERVISOR]:
-        raise HTTPException(status_code=403, detail="슈퍼바이저 권한이 필요합니다.")
+    _check_task_permission(user)
 
     result = await db.execute(
         select(ImprovementTask)
@@ -286,11 +243,6 @@ async def update_task_status(
             task.status = ts
             break
 
-    if data.status == "완료":
-        task.completed_date = datetime.now(timezone.utc)
-    if data.completion_notes:
-        task.completion_notes = data.completion_notes
-
     await db.commit()
     await db.refresh(task)
 
@@ -305,15 +257,18 @@ async def update_task_status(
     return _serialize_task(task, store_name=task.store.store_name if task.store else None)
 
 
-@router.delete("/{task_id}", response_model=SuccessOut)
+@router.delete("/{task_id}")
 async def delete_improvement_task(
     task_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """개선 과제 삭제."""
     _check_task_permission(user)
 
-    result = await db.execute(select(ImprovementTask).where(ImprovementTask.id == task_id))
+    result = await db.execute(
+        select(ImprovementTask).where(ImprovementTask.id == task_id)
+    )
     task = result.scalar_one_or_none()
 
     if not task:
@@ -322,4 +277,4 @@ async def delete_improvement_task(
     await db.delete(task)
     await db.commit()
 
-    return {"detail": "개선 과제가 삭제되었습니다."}
+    return {"status": "success", "message": "개선 과제가 삭제되었습니다."}

@@ -5,53 +5,31 @@ import { PaginatedResponse } from "@/hooks/use-prospects";
 
 // 점포 타입
 export interface Store {
-  id: number;
-  name: string;
-  address: string;
+  id: string;
+  store_name: string;
   region: string;
-  status: string;
-  owner_name: string;
-  owner_phone: string;
-  open_date: string | null;
-  supervisor_id: number | null;
+  address: string | null;
+  supervisor_id: string | null;
   supervisor_name: string | null;
-  health_score: number | null;
-  last_inspection_date: string | null;
-  memo: string;
+  status: string;
   created_at: string;
   updated_at: string;
 }
 
 // 점포 생성/수정 요청 타입
 export interface StoreRequest {
-  name: string;
-  address: string;
-  region?: string;
+  store_name: string;
+  region: string;
+  address?: string;
+  supervisor_id?: string | null;
   status?: string;
-  owner_name: string;
-  owner_phone: string;
-  open_date?: string | null;
-  supervisor_id?: number | null;
-  memo?: string;
-}
-
-// 건강 점수 타입
-export interface StoreHealthScore {
-  store_id: number;
-  overall_score: number;
-  hygiene_score: number;
-  service_score: number;
-  facility_score: number;
-  operation_score: number;
-  trend: string;
-  last_updated: string;
 }
 
 // 필터 파라미터 타입
 interface StoreParams {
   region?: string;
   status?: string;
-  supervisor_id?: number;
+  supervisor_id?: string;
   search?: string;
   page?: number;
 }
@@ -66,7 +44,7 @@ export function useStores(params?: StoreParams) {
 }
 
 // 점포 상세 조회
-export function useStore(id: number | null) {
+export function useStore(id: string | null) {
   return useQuery<Store>({
     queryKey: ["stores", id],
     queryFn: () => api.get(`/v1/stores/${id}`).then((res) => res.data),
@@ -92,7 +70,7 @@ export function useUpdateStore() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<StoreRequest> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<StoreRequest> }) =>
       api.patch(`/v1/stores/${id}`, data).then((res) => res.data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["stores"] });
@@ -101,21 +79,8 @@ export function useUpdateStore() {
   });
 }
 
-// 점포 삭제
-export function useDeleteStore() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) =>
-      api.delete(`/v1/stores/${id}`).then((res) => res.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stores"] });
-    },
-  });
-}
-
 // 점포별 점검 기록 조회
-export function useStoreInspections(id: number | null) {
+export function useStoreInspections(id: string | null) {
   return useQuery({
     queryKey: ["stores", id, "inspections"],
     queryFn: () =>
@@ -125,21 +90,11 @@ export function useStoreInspections(id: number | null) {
 }
 
 // 점포별 개선 과제 조회
-export function useStoreImprovementTasks(id: number | null) {
+export function useStoreImprovementTasks(id: string | null) {
   return useQuery({
     queryKey: ["stores", id, "improvement-tasks"],
     queryFn: () =>
       api.get(`/v1/stores/${id}/improvement-tasks`).then((res) => res.data),
-    enabled: id !== null,
-  });
-}
-
-// 점포 건강 점수 조회
-export function useStoreHealthScore(id: number | null) {
-  return useQuery<StoreHealthScore>({
-    queryKey: ["stores", id, "health-score"],
-    queryFn: () =>
-      api.get(`/v1/stores/${id}/health-score`).then((res) => res.data),
     enabled: id !== null,
   });
 }

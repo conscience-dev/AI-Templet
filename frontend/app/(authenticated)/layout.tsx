@@ -55,7 +55,7 @@ export default function AuthenticatedLayout({
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto bg-background">{children}</main>
+      <main className="flex-1 overflow-y-auto bg-background px-8 py-8">{children}</main>
     </div>
   );
 }

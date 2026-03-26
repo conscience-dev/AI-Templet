@@ -11,7 +11,6 @@ async def test_create_prospect(authenticated_client: AsyncClient):
         "inquiry_path": "인터넷검색",
         "hope_region": "서울 강남",
         "startup_budget": 5000,
-        "tasted": False,
     })
     assert response.status_code == 200
     data = response.json()
@@ -103,27 +102,12 @@ async def test_update_prospect(authenticated_client: AsyncClient):
 
     response = await authenticated_client.patch(f"/v1/prospects/{prospect_id}", json={
         "name": "수정후",
-        "status": "진행중",
+        "status": "상담중",
     })
     assert response.status_code == 200
     assert response.json()["name"] == "수정후"
-    assert response.json()["status"] == "진행중"
+    assert response.json()["status"] == "상담중"
 
-
-@pytest.mark.asyncio
-async def test_delete_prospect(authenticated_client: AsyncClient):
-    create_resp = await authenticated_client.post("/v1/prospects/", json={
-        "name": "삭제대상",
-        "phone": "010-5555-5555",
-        "inquiry_path": "기타",
-    })
-    prospect_id = create_resp.json()["id"]
-
-    response = await authenticated_client.delete(f"/v1/prospects/{prospect_id}")
-    assert response.status_code == 200
-
-    response = await authenticated_client.get(f"/v1/prospects/{prospect_id}")
-    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -136,24 +120,3 @@ async def test_prospect_unauthenticated(client: AsyncClient):
     assert response.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_conversion_analytics(authenticated_client: AsyncClient):
-    # 몇 개의 문의자 생성
-    await authenticated_client.post("/v1/prospects/", json={
-        "name": "성약고객",
-        "phone": "010-7777-0001",
-        "inquiry_path": "매장방문",
-        "status": "성약",
-    })
-    await authenticated_client.post("/v1/prospects/", json={
-        "name": "진행고객",
-        "phone": "010-7777-0002",
-        "inquiry_path": "인터넷검색",
-        "status": "진행중",
-    })
-
-    response = await authenticated_client.get("/v1/prospects/conversion-analytics")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total_prospects"] == 2
-    assert data["conversion_rate"] == 50.0

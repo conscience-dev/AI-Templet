@@ -14,24 +14,23 @@ async def test_health_check(client: AsyncClient):
 async def test_signup(client: AsyncClient):
     """회원가입이 정상 동작한다."""
     response = await client.post("/v1/auth/signup", json={
-        "username": "newuser",
+        "email": "newuser@example.com",
         "password": "password123",
-        "password_confirm": "password123",
-        "terms_of_service": True,
-        "privacy_policy_agreement": True,
+        "name": "신규유저",
     })
     assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "newuser@example.com"
+    assert data["name"] == "신규유저"
 
 
 @pytest.mark.asyncio
 async def test_signup_duplicate(client: AsyncClient):
-    """중복 아이디로 회원가입 시 에러가 발생한다."""
+    """중복 이메일로 회원가입 시 에러가 발생한다."""
     payload = {
-        "username": "dupuser",
+        "email": "dupuser@example.com",
         "password": "password123",
-        "password_confirm": "password123",
-        "terms_of_service": True,
-        "privacy_policy_agreement": True,
+        "name": "중복유저",
     }
     await client.post("/v1/auth/signup", json=payload)
     response = await client.post("/v1/auth/signup", json=payload)
@@ -44,21 +43,19 @@ async def test_login(authenticated_client: AsyncClient):
     response = await authenticated_client.get("/v1/auth/me")
     assert response.status_code == 200
     data = response.json()
-    assert data["username"] == "testuser"
+    assert data["email"] == "testuser@example.com"
 
 
 @pytest.mark.asyncio
 async def test_login_wrong_password(client: AsyncClient):
     """잘못된 비밀번호로 로그인 시 실패한다."""
     await client.post("/v1/auth/signup", json={
-        "username": "wrongpw",
+        "email": "wrongpw@example.com",
         "password": "password123",
-        "password_confirm": "password123",
-        "terms_of_service": True,
-        "privacy_policy_agreement": True,
+        "name": "비번틀린유저",
     })
     response = await client.post("/v1/auth/login", json={
-        "username": "wrongpw",
+        "email": "wrongpw@example.com",
         "password": "wrongpassword",
     })
     assert response.status_code in (400, 401)

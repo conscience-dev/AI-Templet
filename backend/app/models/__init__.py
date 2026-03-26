@@ -1,17 +1,18 @@
 from app.models.base import Base, BaseModel
-from app.models.user import User, UserStatus, UserRole, Jwt
+from app.models.user import User, UserRole, DepartmentType, Jwt
 from app.models.prospect import Prospect, InquiryPath, ProspectStatus
 from app.models.consultation import Consultation, ConsultationResult
 from app.models.store import Store, StoreStatus
 from app.models.store_inspection import StoreInspection, QualityStatus, HygieneStatus
 from app.models.improvement_task import ImprovementTask, TaskCategory, TaskPriority, TaskStatus
+from app.models.claude_token import ClaudeToken
 
 __all__ = [
     "Base",
     "BaseModel",
     "User",
-    "UserStatus",
     "UserRole",
+    "DepartmentType",
     "Jwt",
     "Prospect",
     "InquiryPath",
@@ -27,4 +28,5 @@ __all__ = [
     "TaskCategory",
     "TaskPriority",
     "TaskStatus",
+    "ClaudeToken",
 ]

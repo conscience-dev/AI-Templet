@@ -13,7 +13,8 @@ settings.QDRANT_URL = "http://localhost:6333"
 settings.EMBEDDING_API_KEY = "test-embedding-api-key"
 
 from app.models.base import Base
-from app.models.user import User, UserStatus, UserRole
+from app.models import *  # noqa: F401,F403 — 모든 모델을 로드하여 테이블 생성 보장
+from app.models.user import User, UserRole, DepartmentType
 from app.database import get_db
 from app.main import app
 
@@ -22,14 +23,14 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
 
 
 @pytest_asyncio.fixture
@@ -52,27 +53,27 @@ async def client(db_session: AsyncSession):
 
 @pytest_asyncio.fixture
 async def authenticated_client(client: AsyncClient, db_session: AsyncSession):
-    """Create a user, approve them (consultant status), and return an authenticated client."""
+    """Create a user, set as active staff, and return an authenticated client."""
     # Signup
     await client.post("/v1/auth/signup", json={
-        "username": "testuser",
+        "email": "testuser@example.com",
         "password": "testpass123",
-        "password_confirm": "testpass123",
-        "terms_of_service": True,
-        "privacy_policy_agreement": True,
+        "name": "테스트유저",
+        "role": "manager",
+        "department": "dev",
     })
 
-    # Manually approve user and set role
-    result = await db_session.execute(select(User).where(User.username == "testuser"))
+    # Ensure user is active
+    result = await db_session.execute(select(User).where(User.email == "testuser@example.com"))
     user = result.scalar_one()
-    user.status = UserStatus.ACTIVE
-    user.role = UserRole.DEV_MANAGER
-    user.name = "테스트유저"
+    user.is_active = True
+    user.role = UserRole.MANAGER
+    user.department = DepartmentType.DEV
     await db_session.commit()
 
     # Login
     response = await client.post("/v1/auth/login", json={
-        "username": "testuser",
+        "email": "testuser@example.com",
         "password": "testpass123",
     })
 
@@ -93,22 +94,22 @@ async def supervisor_client(db_session: AsyncSession):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as sv_client:
         await sv_client.post("/v1/auth/signup", json={
-            "username": "supervisoruser",
+            "email": "supervisor@example.com",
             "password": "svpass123",
-            "password_confirm": "svpass123",
-            "terms_of_service": True,
-            "privacy_policy_agreement": True,
+            "name": "슈퍼바이저",
+            "role": "staff",
+            "department": "supervisor",
         })
 
-        result = await db_session.execute(select(User).where(User.username == "supervisoruser"))
+        result = await db_session.execute(select(User).where(User.email == "supervisor@example.com"))
         user = result.scalar_one()
-        user.status = UserStatus.ACTIVE
-        user.role = UserRole.SUPERVISOR
-        user.name = "슈퍼바이저"
+        user.is_active = True
+        user.role = UserRole.STAFF
+        user.department = DepartmentType.SUPERVISOR
         await db_session.commit()
 
         response = await sv_client.post("/v1/auth/login", json={
-            "username": "supervisoruser",
+            "email": "supervisor@example.com",
             "password": "svpass123",
         })
 
@@ -124,23 +125,21 @@ async def supervisor_client(db_session: AsyncSession):
 async def admin_client(client: AsyncClient, db_session: AsyncSession):
     """Create an admin user and return an authenticated client."""
     await client.post("/v1/auth/signup", json={
-        "username": "adminuser",
+        "email": "admin@example.com",
         "password": "adminpass123",
-        "password_confirm": "adminpass123",
-        "terms_of_service": True,
-        "privacy_policy_agreement": True,
+        "name": "관리자",
+        "role": "admin",
     })
 
     # Set as admin
-    result = await db_session.execute(select(User).where(User.username == "adminuser"))
+    result = await db_session.execute(select(User).where(User.email == "admin@example.com"))
     user = result.scalar_one()
-    user.status = UserStatus.ADMIN
     user.role = UserRole.ADMIN
-    user.name = "관리자"
+    user.is_active = True
     await db_session.commit()
 
     response = await client.post("/v1/auth/login", json={
-        "username": "adminuser",
+        "email": "admin@example.com",
         "password": "adminpass123",
     })
 

@@ -1,14 +1,14 @@
 import enum
 import uuid
 
-from sqlalchemy import Integer, Float, Text, DateTime, Enum, ForeignKey, JSON
+from sqlalchemy import Text, DateTime, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel, GUID
 
 
 class QualityStatus(str, enum.Enum):
-    COMPLIANT = "준수"
+    GOOD = "양호"
     POOR = "미흡"
 
 
@@ -37,13 +37,8 @@ class StoreInspection(BaseModel):
         nullable=False,
     )
     hygiene_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sales_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    sales_yoy_change: Mapped[float | None] = mapped_column(Float, nullable=True)
-    sales_mom_change: Mapped[float | None] = mapped_column(Float, nullable=True)
-    staff_count: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    market_change: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sales_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     owner_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
-    improvement_items: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
     store = relationship("Store", back_populates="inspections")

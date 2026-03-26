@@ -5,14 +5,16 @@ import Link from "next/link";
 import {
   LayoutDashboard,
   Users,
-  MessageSquare,
   Store,
-  CheckCircle,
   ListTodo,
   BarChart3,
   Settings,
   LogOut,
   ChefHat,
+  BookOpen,
+  TrendingUp,
+  UserCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -20,83 +22,40 @@ import { useMe, useLogout, User } from "@/hooks/use-auth";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// 역할별 메뉴 접근 권한 정의
 interface MenuItem {
   label: string;
   href: string;
   icon: React.ElementType;
-  roles: string[];
+  adminOnly?: boolean;
 }
 
 const menuItems: MenuItem[] = [
-  {
-    label: "대시보드",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    roles: [
-      "admin",
-      "executive",
-      "dev_manager",
-      "dev_staff",
-      "supervisor_manager",
-      "supervisor",
-    ],
-  },
-  {
-    label: "가맹문의자",
-    href: "/prospects",
-    icon: Users,
-    roles: ["admin", "executive", "dev_manager", "dev_staff"],
-  },
-  {
-    label: "상담 기록",
-    href: "/consultations",
-    icon: MessageSquare,
-    roles: ["admin", "dev_manager", "dev_staff"],
-  },
-  {
-    label: "점포 관리",
-    href: "/stores",
-    icon: Store,
-    roles: ["admin", "executive", "supervisor_manager", "supervisor"],
-  },
-  {
-    label: "점포 점검",
-    href: "/inspections",
-    icon: CheckCircle,
-    roles: ["admin", "supervisor_manager", "supervisor"],
-  },
-  {
-    label: "개선 과제",
-    href: "/improvement-tasks",
-    icon: ListTodo,
-    roles: ["admin", "executive", "supervisor_manager", "supervisor"],
-  },
-  {
-    label: "분석 리포트",
-    href: "/reports",
-    icon: BarChart3,
-    roles: ["admin", "executive", "dev_manager", "supervisor_manager"],
-  },
-  {
-    label: "사용자 관리",
-    href: "/admin/users",
-    icon: Settings,
-    roles: ["admin"],
-  },
+  { label: "대시보드", href: "/dashboard", icon: LayoutDashboard },
+  { label: "가맹문의자", href: "/prospects", icon: Users },
+  { label: "상담 가이드", href: "/consultation-guide", icon: BookOpen },
+  { label: "점포", href: "/stores", icon: Store },
+  { label: "개선 과제", href: "/improvement-tasks", icon: ListTodo },
+  { label: "SV 성과", href: "/supervisors", icon: UserCheck },
+  { label: "위기 경보", href: "/alerts", icon: AlertTriangle },
+  { label: "마케팅", href: "/marketing", icon: TrendingUp },
+  { label: "리포트", href: "/reports", icon: BarChart3 },
+  { label: "사용자 관리", href: "/admin/users", icon: Settings, adminOnly: true },
+  { label: "시스템 설정", href: "/admin/settings", icon: Settings, adminOnly: true },
 ];
 
-// 역할 표시명
 const roleLabels: Record<string, string> = {
   admin: "관리자",
-  executive: "경영진",
-  dev_manager: "점포개발 매니저",
-  dev_staff: "점포개발 담당자",
-  supervisor_manager: "SV 매니저",
-  supervisor: "슈퍼바이저",
+  manager: "매니저",
+  staff: "담당자",
 };
 
-// 유저 이니셜 추출
+const departmentLabels: Record<string, string> = {
+  dev: "점포개발팀",
+  supervisor: "슈퍼바이저팀",
+  executive: "경영진",
+  admin: "관리팀",
+};
+
 function getInitials(name: string): string {
   if (!name) return "?";
   const parts = name.trim().split(" ");
@@ -104,9 +63,11 @@ function getInitials(name: string): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
-// 역할에 따라 필터링된 메뉴 반환
-function getFilteredMenu(role: string): MenuItem[] {
-  return menuItems.filter((item) => item.roles.includes(role));
+function getFilteredMenu(user: User): MenuItem[] {
+  return menuItems.filter((item) => {
+    if (item.adminOnly && user.role !== "admin") return false;
+    return true;
+  });
 }
 
 export function Sidebar() {
@@ -114,10 +75,10 @@ export function Sidebar() {
   const { data: user, isLoading } = useMe();
   const logout = useLogout();
 
-  const filteredMenu = user ? getFilteredMenu(user.role) : [];
+  const filteredMenu = user ? getFilteredMenu(user) : [];
 
   return (
-    <aside className="flex h-screen w-64 flex-col bg-[#1a1915]">
+    <aside className="flex h-screen w-64 shrink-0 flex-col bg-[#1a1915]">
       {/* 로고 영역 */}
       <div className="flex h-16 items-center gap-3 px-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#d4a574]/15">
@@ -192,6 +153,10 @@ function UserSection({
   user: User;
   onLogout: () => void;
 }) {
+  const departmentLabel = user.department ? departmentLabels[user.department] || user.department : "";
+  const roleLabel = roleLabels[user.role] || user.role;
+  const displayRole = departmentLabel ? `${departmentLabel} ${roleLabel}` : roleLabel;
+
   return (
     <div className="flex items-center justify-between px-3">
       <div className="flex items-center gap-3">
@@ -203,7 +168,7 @@ function UserSection({
             {user.name}
           </p>
           <p className="truncate text-tiny text-[#a39e93]">
-            {roleLabels[user.role] || user.role}
+            {displayRole}
           </p>
         </div>
       </div>

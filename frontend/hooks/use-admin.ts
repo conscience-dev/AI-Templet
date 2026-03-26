@@ -28,8 +28,8 @@ export function useUpdateUserStatus() {
       userId,
       data,
     }: {
-      userId: number;
-      data: { status?: string; role?: string; is_active?: boolean };
+      userId: string;
+      data: { role?: string; is_active?: boolean };
     }) => api.patch(`/v1/auth/${userId}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });

@@ -21,24 +21,24 @@ import { toast } from "@/hooks/use-toast";
 export default function LoginPage() {
   const router = useRouter();
   const login = useLogin();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!username.trim() || !password.trim()) {
+    if (!email.trim() || !password.trim()) {
       toast({
         title: "입력 오류",
-        description: "아이디와 비밀번호를 모두 입력해주세요.",
+        description: "이메일과 비밀번호를 모두 입력해주세요.",
         variant: "destructive",
       });
       return;
     }
 
     login.mutate(
-      { username, password },
+      { email, password },
       {
         onSuccess: () => {
           router.push("/dashboard");
@@ -49,7 +49,7 @@ export default function LoginPage() {
             title: "로그인 실패",
             description:
               err.response?.data?.detail ||
-              "아이디 또는 비밀번호를 확인해주세요.",
+              "이메일 또는 비밀번호를 확인해주세요.",
             variant: "destructive",
           });
         },
@@ -148,17 +148,17 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-caption2 text-foreground">
-                아이디
+              <Label htmlFor="email" className="text-caption2 text-foreground">
+                이메일
               </Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="아이디를 입력하세요"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="이메일을 입력하세요"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="h-11 rounded-xl border-border bg-white text-bodymedium placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-[#c47833]/20"
-                autoComplete="username"
+                autoComplete="email"
               />
             </div>
 

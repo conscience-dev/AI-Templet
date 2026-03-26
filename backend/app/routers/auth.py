@@ -4,9 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.database import get_db
-from app.models.user import User, UserStatus, Jwt
+from app.models.user import User, UserRole, DepartmentType, Jwt
 from app.schemas.user import (
-    UserSignupIn,
+    UserCreateIn,
     UserLoginIn,
     UserUpdateIn,
     RefreshTokenIn,
@@ -31,16 +31,11 @@ router = APIRouter()
 def _serialize_user(user: User) -> UserMeOut:
     return UserMeOut(
         id=str(user.id),
-        username=user.username,
         email=user.email,
-        status=user.status.value,
-        phone=user.phone,
         name=user.name,
         role=user.role.value if user.role else None,
-        department=user.department,
+        department=user.department.value if user.department else None,
         is_active=user.is_active,
-        terms_of_service=user.terms_of_service,
-        privacy_policy_agreement=user.privacy_policy_agreement,
         created_at=user.created_at.isoformat(),
     )
 
@@ -72,28 +67,13 @@ def _set_cookie_jwt(response: JSONResponse, access: str, refresh: str, access_ex
 
 
 @router.post("/signup", response_model=UserMeOut)
-async def signup(data: UserSignupIn, db: AsyncSession = Depends(get_db)):
-    # Check duplicate username
-    result = await db.execute(select(User).where(User.username == data.username))
+async def signup(data: UserCreateIn, db: AsyncSession = Depends(get_db)):
+    # Check duplicate email
+    result = await db.execute(select(User).where(User.email == data.email))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=420, detail="이미 등록된 아이디에요.")
-
-    if data.email:
-        result = await db.execute(select(User).where(User.email == data.email))
-        if result.scalar_one_or_none():
-            raise HTTPException(status_code=420, detail="이미 등록된 이메일이에요.")
-
-    if data.password != data.password_confirm:
-        raise HTTPException(status_code=400, detail="비밀번호가 일치하지 않아요.")
-
-    if not data.terms_of_service:
-        raise HTTPException(status_code=400, detail="이용약관에 동의해주세요.")
-
-    if not data.privacy_policy_agreement:
-        raise HTTPException(status_code=400, detail="개인정보 수집 및 이용 동의에 동의해주세요.")
+        raise HTTPException(status_code=420, detail="이미 등록된 이메일이에요.")
 
     try:
-        from app.models.user import UserRole
         role = None
         if data.role:
             for r in UserRole:
@@ -101,17 +81,19 @@ async def signup(data: UserSignupIn, db: AsyncSession = Depends(get_db)):
                     role = r
                     break
 
+        department = None
+        if data.department:
+            for d in DepartmentType:
+                if d.value == data.department:
+                    department = d
+                    break
+
         user = User(
-            username=data.username,
             email=data.email,
-            password=hash_password(data.password),
-            phone=data.phone,
+            password_hash=hash_password(data.password),
             name=data.name,
-            role=role,
-            department=data.department,
-            status=UserStatus.PENDING,
-            terms_of_service=data.terms_of_service,
-            privacy_policy_agreement=data.privacy_policy_agreement,
+            role=role or UserRole.STAFF,
+            department=department,
         )
         db.add(user)
         await db.commit()
@@ -125,20 +107,16 @@ async def signup(data: UserSignupIn, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login")
 async def login(data: UserLoginIn, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.username == data.username))
+    result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(status_code=400, detail="해당 아이디로 등록된 사용자가 없어요.")
+        raise HTTPException(status_code=400, detail="해당 이메일로 등록된 사용자가 없어요.")
 
-    if not verify_password(data.password, user.password):
+    if not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="비밀번호가 일치하지 않아요.")
 
-    # Check user status
-    if user.status == UserStatus.PENDING:
-        raise HTTPException(status_code=403, detail="관리자 승인 대기 중입니다. 승인 후 로그인이 가능합니다.")
-
-    if user.status == UserStatus.INACTIVE:
+    if not user.is_active:
         raise HTTPException(status_code=403, detail="비활성화된 계정입니다. 관리자에게 문의해주세요.")
 
     # Delete existing JWT
@@ -151,7 +129,7 @@ async def login(data: UserLoginIn, db: AsyncSession = Depends(get_db)):
     db.add(jwt_entry)
     await db.commit()
 
-    response_data = {"status": user.status.value}
+    response_data = {"status": "success"}
     if settings.ENV_NAME == "local":
         response_data["access_token"] = access
         response_data["refresh_token"] = refresh
@@ -198,7 +176,7 @@ async def refresh_token(data: RefreshTokenIn, db: AsyncSession = Depends(get_db)
     jwt_entry.refresh = refresh
     await db.commit()
 
-    response_data = {"status": user.status.value}
+    response_data = {"status": "success"}
     if settings.ENV_NAME == "local":
         response_data["access_token"] = access
         response_data["refresh_token"] = refresh
@@ -220,17 +198,17 @@ async def get_me(
 @router.get("/users", response_model=PaginatedResponse[UserMeOut])
 async def list_users(
     page: int = Query(1, ge=1),
-    status: str = Query("", description="상태 필터"),
+    role: str = Query("", description="역할 필터"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.status != UserStatus.ADMIN:
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
 
     query = select(User).order_by(User.created_at.desc())
 
-    if status:
-        query = query.where(User.status == status)
+    if role:
+        query = query.where(User.role == role)
 
     result = await db.execute(query)
     users = list(result.scalars().all())
@@ -245,7 +223,7 @@ async def update_user(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.status != UserStatus.ADMIN:
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -254,27 +232,20 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
-    if data.status is not None:
-        for s in UserStatus:
-            if s.value == data.status:
-                user.status = s
-                break
-
-    if data.phone is not None:
-        user.phone = data.phone
-
     if data.name is not None:
         user.name = data.name
 
     if data.role is not None:
-        from app.models.user import UserRole
         for r in UserRole:
             if r.value == data.role:
                 user.role = r
                 break
 
     if data.department is not None:
-        user.department = data.department
+        for d in DepartmentType:
+            if d.value == data.department:
+                user.department = d
+                break
 
     if data.is_active is not None:
         user.is_active = data.is_active

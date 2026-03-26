@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Users } from "lucide-react";
+import { Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAdminUsers, useUpdateUserStatus } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -27,32 +26,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const roleBadgeStyles: Record<string, string> = {
   admin: "bg-purple-50 text-purple-700",
-  executive: "bg-blue-50 text-blue-700",
-  dev_manager: "bg-teal-50 text-teal-700",
-  dev_staff: "bg-teal-50 text-teal-700",
-  supervisor_manager: "bg-amber-50 text-amber-700",
-  supervisor: "bg-amber-50 text-amber-700",
+  manager: "bg-blue-50 text-blue-700",
+  staff: "bg-teal-50 text-teal-700",
 };
 
 const roleLabels: Record<string, string> = {
   admin: "관리자",
+  manager: "매니저",
+  staff: "담당자",
+};
+
+const departmentLabels: Record<string, string> = {
+  dev: "점포개발팀",
+  supervisor: "슈퍼바이저팀",
   executive: "경영진",
-  dev_manager: "점포개발 매니저",
-  dev_staff: "점포개발 담당자",
-  supervisor_manager: "SV 매니저",
-  supervisor: "슈퍼바이저",
-};
-
-const statusBadgeStyles: Record<string, string> = {
-  active: "bg-green-50 text-green-700",
-  pending: "bg-amber-50 text-amber-700",
-  inactive: "bg-[#f5f3ef] text-muted-foreground",
-};
-
-const statusLabels: Record<string, string> = {
-  active: "활성",
-  pending: "승인대기",
-  inactive: "비활성",
+  admin: "관리팀",
 };
 
 export default function AdminUsersPage() {
@@ -70,23 +58,23 @@ export default function AdminUsersPage() {
   const users = data?.results ?? [];
   const totalPages = data?.page_cnt ?? 1;
 
-  const handleApprove = (userId: number) => {
+  const handleActivate = (userId: string) => {
     updateStatusMutation.mutate(
-      { userId, data: { status: "active", is_active: true } },
+      { userId, data: { is_active: true } },
       {
         onSuccess: () => {
-          toast({ variant: "success", title: "사용자가 승인되었습니다." });
+          toast({ variant: "success", title: "사용자가 활성화되었습니다." });
         },
         onError: () => {
-          toast({ variant: "destructive", title: "승인에 실패했습니다." });
+          toast({ variant: "destructive", title: "활성화에 실패했습니다." });
         },
       },
     );
   };
 
-  const handleDeactivate = (userId: number) => {
+  const handleDeactivate = (userId: string) => {
     updateStatusMutation.mutate(
-      { userId, data: { status: "inactive", is_active: false } },
+      { userId, data: { is_active: false } },
       {
         onSuccess: () => {
           toast({ variant: "success", title: "사용자가 비활성화되었습니다." });
@@ -122,10 +110,8 @@ export default function AdminUsersPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">전체</SelectItem>
-            <SelectItem value="pending">승인대기</SelectItem>
             <SelectItem value="active">활성</SelectItem>
             <SelectItem value="inactive">비활성</SelectItem>
-            <SelectItem value="admin">관리자</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -136,7 +122,6 @@ export default function AdminUsersPage() {
           <TableHeader>
             <TableRow className="border-border/60 bg-[#faf9f7]">
               <TableHead className="text-caption font-medium">이름</TableHead>
-              <TableHead className="text-caption font-medium">아이디</TableHead>
               <TableHead className="text-caption font-medium">이메일</TableHead>
               <TableHead className="text-caption font-medium">역할</TableHead>
               <TableHead className="text-caption font-medium">부서</TableHead>
@@ -149,7 +134,7 @@ export default function AdminUsersPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="border-border/40">
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full rounded" />
                     </TableCell>
@@ -158,7 +143,7 @@ export default function AdminUsersPage() {
               ))
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-48">
+                <TableCell className="h-48" colSpan={7}>
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#d4a574]/10">
                       <Users className="h-6 w-6 text-[#c47833]" />
@@ -177,9 +162,6 @@ export default function AdminUsersPage() {
                 >
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {user.username}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
                     {user.email}
                   </TableCell>
                   <TableCell>
@@ -194,17 +176,20 @@ export default function AdminUsersPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {user.department || "-"}
+                    {user.department
+                      ? departmentLabels[user.department] || user.department
+                      : "-"}
                   </TableCell>
                   <TableCell>
                     <span
                       className={cn(
                         "inline-flex items-center rounded-xl px-2.5 py-0.5 text-caption font-medium",
-                        statusBadgeStyles[user.status] ??
-                          "bg-[#f5f3ef] text-muted-foreground",
+                        user.is_active
+                          ? "bg-green-50 text-green-700"
+                          : "bg-[#f5f3ef] text-muted-foreground",
                       )}
                     >
-                      {statusLabels[user.status] ?? user.status}
+                      {user.is_active ? "활성" : "비활성"}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -212,37 +197,25 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      {user.status === "pending" && (
+                      {user.is_active && user.role !== "admin" && (
                         <Button
-                          size="sm"
-                          className="h-7 rounded-lg bg-[#c47833] px-3 text-tiny text-white hover:bg-[#b06a2a]"
-                          onClick={() => handleApprove(user.id)}
+                          className="h-7 rounded-lg px-3 text-tiny text-red-600 hover:bg-red-50 hover:text-red-700"
                           disabled={updateStatusMutation.isPending}
-                        >
-                          승인
-                        </Button>
-                      )}
-                      {user.status === "active" &&
-                        user.role !== "admin" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 rounded-lg px-3 text-tiny text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => handleDeactivate(user.id)}
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            비활성화
-                          </Button>
-                        )}
-                      {user.status === "inactive" && (
-                        <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 rounded-lg px-3 text-tiny"
-                          onClick={() => handleApprove(user.id)}
-                          disabled={updateStatusMutation.isPending}
+                          onClick={() => handleDeactivate(user.id)}
                         >
-                          재활성화
+                          비활성화
+                        </Button>
+                      )}
+                      {!user.is_active && (
+                        <Button
+                          className="h-7 rounded-lg bg-[#c47833] px-3 text-tiny text-white hover:bg-[#b06a2a]"
+                          disabled={updateStatusMutation.isPending}
+                          size="sm"
+                          onClick={() => handleActivate(user.id)}
+                        >
+                          활성화
                         </Button>
                       )}
                     </div>
@@ -256,10 +229,10 @@ export default function AdminUsersPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 border-t border-border/40 px-6 py-4">
             <Button
-              variant="outline"
-              size="sm"
               className="rounded-xl"
               disabled={page <= 1}
+              size="sm"
+              variant="outline"
               onClick={() => setPage(page - 1)}
             >
               이전
@@ -268,10 +241,10 @@ export default function AdminUsersPage() {
               {page} / {totalPages}
             </span>
             <Button
-              variant="outline"
-              size="sm"
               className="rounded-xl"
               disabled={page >= totalPages}
+              size="sm"
+              variant="outline"
               onClick={() => setPage(page + 1)}
             >
               다음

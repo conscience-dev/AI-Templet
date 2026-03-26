@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 from httpx import AsyncClient
 
 
@@ -6,6 +7,19 @@ async def _create_store(client: AsyncClient, name: str = "과제테스트점포"
     resp = await client.post("/v1/stores/", json={
         "store_name": name,
         "region": "서울",
+    })
+    assert resp.status_code == 200, f"점포 생성 실패: {resp.status_code} {resp.text}"
+    return resp.json()["id"]
+
+
+async def _create_inspection(client: AsyncClient, store_id: str) -> str:
+    """점검 기록 생성 헬퍼 (점포 하위 엔드포인트 사용)."""
+    resp = await client.post(f"/v1/stores/{store_id}/inspections", json={
+        "inspection_date": "2026-03-20T10:00:00",
+        "quality_status": "미흡",
+        "quality_notes": "면 물붓기 시간 미준수",
+        "hygiene_status": "미흡",
+        "hygiene_notes": "주방 바닥 오염",
     })
     return resp.json()["id"]
 
@@ -117,12 +131,9 @@ async def test_update_task_status(supervisor_client: AsyncClient):
 
     response = await supervisor_client.patch(f"/v1/improvement-tasks/{task_id}/status", json={
         "status": "완료",
-        "completion_notes": "정상 처리 완료",
     })
     assert response.status_code == 200
     assert response.json()["status"] == "완료"
-    assert response.json()["completion_notes"] == "정상 처리 완료"
-    assert response.json()["completed_date"] is not None
 
 
 @pytest.mark.asyncio
@@ -131,7 +142,7 @@ async def test_delete_improvement_task(supervisor_client: AsyncClient):
 
     create_resp = await supervisor_client.post("/v1/improvement-tasks/", json={
         "store_id": store_id,
-        "category": "인력",
+        "category": "운영",
         "task_description": "삭제대상 과제",
     })
     task_id = create_resp.json()["id"]
@@ -144,50 +155,24 @@ async def test_delete_improvement_task(supervisor_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_auto_create_improvement_tasks(supervisor_client: AsyncClient):
-    """점검 결과로부터 개선 과제 자동 생성 - supervisor_manager 권한 필요."""
-    # supervisor는 supervisor_manager가 아니므로 403
+async def test_generate_tasks_from_inspection(supervisor_client: AsyncClient):
+    """점검 결과로부터 AI 기반 개선 과제 생성 (모킹)."""
     store_id = await _create_store(supervisor_client)
+    inspection_id = await _create_inspection(supervisor_client, store_id)
 
-    create_resp = await supervisor_client.post("/v1/inspections/", json={
-        "store_id": store_id,
-        "inspection_date": "2026-03-20T10:00:00",
-        "quality_status": "미흡",
-        "quality_notes": "면 물붓기 시간 미준수",
-        "hygiene_status": "미흡",
-        "hygiene_notes": "주방 바닥 오염",
-    })
-    inspection_id = create_resp.json()["id"]
+    mock_ai_response = [
+        {"category": "품질", "task_description": "면 물붓기 시간 준수 교육", "priority": "높음"},
+        {"category": "위생", "task_description": "주방 바닥 청소 강화", "priority": "높음"},
+    ]
 
-    response = await supervisor_client.post(
-        f"/v1/inspections/{inspection_id}/improvement-tasks-auto-create"
-    )
-    assert response.status_code == 403
+    with patch("app.utils.ai.call_claude_json", return_value=mock_ai_response):
+        with patch("app.services.claude_token_service.get_valid_access_token", return_value="mock-token"):
+            response = await supervisor_client.post(
+                f"/v1/inspections/{inspection_id}/generate-tasks"
+            )
 
-
-@pytest.mark.asyncio
-async def test_auto_create_improvement_tasks_admin(admin_client: AsyncClient):
-    """관리자 권한으로 개선 과제 자동 생성."""
-    store_resp = await admin_client.post("/v1/stores/", json={
-        "store_name": "자동생성테스트점",
-        "region": "서울",
-    })
-    store_id = store_resp.json()["id"]
-
-    create_resp = await admin_client.post("/v1/inspections/", json={
-        "store_id": store_id,
-        "inspection_date": "2026-03-20T10:00:00",
-        "quality_status": "미흡",
-        "quality_notes": "면 물붓기 시간 미준수",
-        "hygiene_status": "미흡",
-        "hygiene_notes": "주방 바닥 오염",
-        "sales_mom_change": -10.5,
-    })
-    inspection_id = create_resp.json()["id"]
-
-    response = await admin_client.post(
-        f"/v1/inspections/{inspection_id}/improvement-tasks-auto-create"
-    )
     assert response.status_code == 200
     data = response.json()
-    assert len(data["created_categories"]) == 3  # 품질, 위생, 매출
+    assert len(data["tasks"]) == 2
+    assert data["tasks"][0]["category"] == "품질"
+    assert data["tasks"][1]["category"] == "위생"

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, use } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { useCreateConsultation } from "@/hooks/use-consultations";
-import { useProspects } from "@/hooks/use-prospects";
+import { useProspect } from "@/hooks/use-prospects";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,20 +19,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function NewConsultationPage() {
+export default function NewConsultationPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: prospectId } = use(params);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const prospectIdParam = searchParams.get("prospect_id");
 
-  const { data: prospectsData } = useProspects({ page: 1 });
+  const { data: prospect, isLoading: prospectLoading } = useProspect(prospectId);
   const createMutation = useCreateConsultation();
 
   const [form, setForm] = useState({
-    prospect_id: prospectIdParam ? Number(prospectIdParam) : 0,
-    type: "1차",
-    consulted_at: "",
+    consultation_order: 1,
+    consultation_date: "",
     content: "",
     result: "",
     next_action: "",
@@ -41,28 +44,30 @@ export default function NewConsultationPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.prospect_id) {
-      toast({ variant: "destructive", title: "가맹문의자를 선택해주세요." });
-      return;
-    }
     if (!form.content) {
       toast({ variant: "destructive", title: "상담 내용을 입력해주세요." });
+      return;
+    }
+    if (!form.result) {
+      toast({ variant: "destructive", title: "상담 결과를 선택해주세요." });
       return;
     }
 
     createMutation.mutate(
       {
-        prospect_id: form.prospect_id,
-        type: form.type,
-        content: form.content,
-        result: form.result || undefined,
-        next_action: form.next_action || undefined,
-        next_contact_date: null,
+        prospectId,
+        data: {
+          consultation_order: form.consultation_order,
+          consultation_date: form.consultation_date || new Date().toISOString(),
+          content: form.content,
+          result: form.result,
+          next_action: form.next_action || undefined,
+        },
       },
       {
         onSuccess: () => {
-          toast({ variant: "success", title: "상담 기록이 저장되었습니다." });
-          router.push("/consultations");
+          toast({ title: "상담 기록이 저장되었습니다." });
+          router.push(`/prospects/${prospectId}`);
         },
         onError: () => {
           toast({
@@ -74,67 +79,49 @@ export default function NewConsultationPage() {
     );
   };
 
-  const prospects = prospectsData?.results ?? [];
-
   return (
     <div className="mx-auto max-w-3xl px-8 py-8">
       {/* 헤더 */}
       <div className="mb-6">
         <Link
-          href="/consultations"
+          href={`/prospects/${prospectId}`}
           className="mb-4 inline-flex items-center gap-1.5 text-caption text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          상담 기록 목록
+          문의자 상세로 돌아가기
         </Link>
-        <h1 className="text-heading1 text-foreground">신규 상담 등록</h1>
+        {prospectLoading ? (
+          <Skeleton className="h-8 w-48 rounded-lg" />
+        ) : (
+          <h1 className="text-heading1 text-foreground">
+            {prospect?.name} - 상담 등록
+          </h1>
+        )}
       </div>
 
       {/* 폼 */}
       <form onSubmit={handleSubmit}>
         <div className="space-y-6 rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          {/* 가맹문의자 선택 */}
-          <div className="space-y-2">
-            <Label className="text-bodymedium font-medium">
-              가맹문의자 <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={form.prospect_id ? String(form.prospect_id) : ""}
-              onValueChange={(v) =>
-                setForm((prev) => ({ ...prev, prospect_id: Number(v) }))
-              }
-            >
-              <SelectTrigger className="h-11 rounded-xl border-border">
-                <SelectValue placeholder="가맹문의자 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {prospects.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* 상담 차수 */}
           <div className="space-y-2">
-            <Label className="text-bodymedium font-medium">상담 차수</Label>
+            <Label className="text-bodymedium font-medium">
+              상담 차수 <span className="text-red-500">*</span>
+            </Label>
             <Select
-              value={form.type}
+              value={String(form.consultation_order)}
               onValueChange={(v) =>
-                setForm((prev) => ({ ...prev, type: v }))
+                setForm((prev) => ({ ...prev, consultation_order: Number(v) }))
               }
             >
               <SelectTrigger className="h-11 rounded-xl border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1차">1차</SelectItem>
-                <SelectItem value="2차">2차</SelectItem>
-                <SelectItem value="3차">3차</SelectItem>
-                <SelectItem value="4차">4차</SelectItem>
-                <SelectItem value="5차 이상">5차 이상</SelectItem>
+                <SelectItem value="1">1차</SelectItem>
+                <SelectItem value="2">2차</SelectItem>
+                <SelectItem value="3">3차</SelectItem>
+                <SelectItem value="4">4차</SelectItem>
+                <SelectItem value="5">5차 이상</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -144,9 +131,9 @@ export default function NewConsultationPage() {
             <Label className="text-bodymedium font-medium">상담일시</Label>
             <Input
               type="datetime-local"
-              value={form.consulted_at}
+              value={form.consultation_date}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, consulted_at: e.target.value }))
+                setForm((prev) => ({ ...prev, consultation_date: e.target.value }))
               }
               className="h-11 rounded-xl border-border"
             />
@@ -167,9 +154,11 @@ export default function NewConsultationPage() {
             />
           </div>
 
-          {/* 결과 */}
+          {/* 상담 결과 */}
           <div className="space-y-2">
-            <Label className="text-bodymedium font-medium">결과</Label>
+            <Label className="text-bodymedium font-medium">
+              상담 결과 <span className="text-red-500">*</span>
+            </Label>
             <Select
               value={form.result}
               onValueChange={(v) =>
@@ -180,18 +169,19 @@ export default function NewConsultationPage() {
                 <SelectValue placeholder="결과 선택" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="A가망고객">A 가망고객</SelectItem>
-                <SelectItem value="B지속고객">B 지속고객</SelectItem>
-                <SelectItem value="C종료의지없음">C 종료의지없음</SelectItem>
+                <SelectItem value="긍정">긍정</SelectItem>
+                <SelectItem value="보통">보통</SelectItem>
+                <SelectItem value="부정">부정</SelectItem>
+                <SelectItem value="종료">종료</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* 다음 조치 */}
+          {/* 다음 액션 메모 */}
           <div className="space-y-2">
-            <Label className="text-bodymedium font-medium">다음 조치</Label>
+            <Label className="text-bodymedium font-medium">다음 액션 메모</Label>
             <Textarea
-              placeholder="다음 조치 사항을 입력하세요..."
+              placeholder="다음 액션 사항을 입력하세요..."
               value={form.next_action}
               onChange={(e) =>
                 setForm((prev) => ({
@@ -206,7 +196,7 @@ export default function NewConsultationPage() {
 
         {/* 액션 */}
         <div className="mt-6 flex items-center justify-end gap-3">
-          <Link href="/consultations">
+          <Link href={`/prospects/${prospectId}`}>
             <Button type="button" variant="outline" className="rounded-xl">
               취소
             </Button>

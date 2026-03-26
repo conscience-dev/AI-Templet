@@ -5,23 +5,19 @@ import api from "@/lib/api";
 
 // 유저 정보 타입
 export interface User {
-  id: number;
-  username: string;
+  id: string;
   email: string;
-  status: string;
   name: string;
   role: string;
-  department: string;
-  phone: string;
+  department: string | null;
   is_active: boolean;
-  terms_of_service: boolean;
-  privacy_policy_agreement: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 // 로그인 요청 타입
 interface LoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -30,18 +26,6 @@ interface LoginResponse {
   status: string;
   access_token: string;
   refresh_token: string;
-}
-
-// 회원가입 요청 타입
-interface SignupRequest {
-  username: string;
-  email: string;
-  password: string;
-  name: string;
-  department?: string;
-  phone?: string;
-  terms_of_service: boolean;
-  privacy_policy_agreement: boolean;
 }
 
 // 현재 유저 정보 조회
@@ -68,14 +52,6 @@ export function useLogin() {
       localStorage.setItem("refresh_token", data.refresh_token);
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
     },
-  });
-}
-
-// 회원가입
-export function useSignup() {
-  return useMutation({
-    mutationFn: (data: SignupRequest) =>
-      api.post("/v1/auth/signup", data).then((res) => res.data),
   });
 }
 

@@ -8,7 +8,6 @@ async def test_create_store(supervisor_client: AsyncClient):
         "store_name": "부산해운대센텀점",
         "region": "부산",
         "address": "부산광역시 해운대구 센텀로 100",
-        "store_size": 30,
         "status": "운영중",
     })
     assert response.status_code == 200
@@ -98,20 +97,6 @@ async def test_update_store(supervisor_client: AsyncClient):
     assert response.json()["store_name"] == "수정후점포"
     assert response.json()["region"] == "경기"
 
-
-@pytest.mark.asyncio
-async def test_delete_store(supervisor_client: AsyncClient):
-    create_resp = await supervisor_client.post("/v1/stores/", json={
-        "store_name": "삭제대상점",
-        "region": "제주",
-    })
-    store_id = create_resp.json()["id"]
-
-    response = await supervisor_client.delete(f"/v1/stores/{store_id}")
-    assert response.status_code == 200
-
-    response = await supervisor_client.get(f"/v1/stores/{store_id}")
-    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

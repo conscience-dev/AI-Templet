@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ListTodo, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ListTodo, Plus, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -33,7 +35,6 @@ const statusStyles: Record<string, string> = {
   미처리: "bg-red-50 text-red-700",
   진행중: "bg-amber-50 text-amber-700",
   완료: "bg-green-50 text-green-700",
-  보류: "bg-[#f5f3ef] text-muted-foreground",
 };
 
 const priorityStyles: Record<string, string> = {
@@ -46,12 +47,12 @@ const categoryStyles: Record<string, string> = {
   품질: "bg-blue-50 text-blue-700",
   위생: "bg-green-50 text-green-700",
   매출: "bg-amber-50 text-amber-700",
-  인력: "bg-purple-50 text-purple-700",
-  상권: "bg-teal-50 text-teal-700",
+  운영: "bg-purple-50 text-purple-700",
   기타: "bg-[#f5f3ef] text-muted-foreground",
 };
 
 export default function ImprovementTasksPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -64,7 +65,7 @@ export default function ImprovementTasksPage() {
     search: search || undefined,
     category: categoryFilter || undefined,
     status: statusFilter || undefined,
-    store_id: storeFilter ? Number(storeFilter) : undefined,
+    store_id: storeFilter || undefined,
     page,
   });
 
@@ -81,7 +82,7 @@ export default function ImprovementTasksPage() {
     ? tasks.filter((t) => t.priority === priorityFilter)
     : tasks;
 
-  const handleStatusChange = (taskId: number, newStatus: string) => {
+  const handleStatusChange = (taskId: string, newStatus: string) => {
     updateStatusMutation.mutate(
       { id: taskId, status: newStatus },
       {
@@ -98,8 +99,14 @@ export default function ImprovementTasksPage() {
   return (
     <div className="mx-auto max-w-6xl px-8 py-8">
       {/* 헤더 */}
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-heading1 text-foreground">개선 과제 관리</h1>
+        <Link href="/improvement-tasks/new">
+          <Button className="rounded-xl bg-[#c47833] text-white transition-colors hover:bg-[#b06a2a]">
+            <Plus className="mr-1.5 h-4 w-4" />
+            새 과제
+          </Button>
+        </Link>
       </div>
 
       {/* 필터 */}
@@ -130,7 +137,7 @@ export default function ImprovementTasksPage() {
             <SelectItem value="all">전체 점포</SelectItem>
             {stores.map((s) => (
               <SelectItem key={s.id} value={String(s.id)}>
-                {s.name}
+                {s.store_name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -150,8 +157,7 @@ export default function ImprovementTasksPage() {
             <SelectItem value="품질">품질</SelectItem>
             <SelectItem value="위생">위생</SelectItem>
             <SelectItem value="매출">매출</SelectItem>
-            <SelectItem value="인력">인력</SelectItem>
-            <SelectItem value="상권">상권</SelectItem>
+            <SelectItem value="운영">운영</SelectItem>
             <SelectItem value="기타">기타</SelectItem>
           </SelectContent>
         </Select>
@@ -170,7 +176,6 @@ export default function ImprovementTasksPage() {
             <SelectItem value="미처리">미처리</SelectItem>
             <SelectItem value="진행중">진행중</SelectItem>
             <SelectItem value="완료">완료</SelectItem>
-            <SelectItem value="보류">보류</SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -233,7 +238,8 @@ export default function ImprovementTasksPage() {
               filtered.map((task) => (
                 <TableRow
                   key={task.id}
-                  className="border-border/40 transition-colors hover:bg-[#faf9f7]"
+                  className="cursor-pointer border-border/40 transition-colors hover:bg-[#faf9f7]"
+                  onClick={() => router.push(`/improvement-tasks/${task.id}`)}
                 >
                   <TableCell className="font-medium">
                     {task.store_name}
@@ -250,7 +256,7 @@ export default function ImprovementTasksPage() {
                     </span>
                   </TableCell>
                   <TableCell className="max-w-[250px] truncate text-muted-foreground">
-                    {task.title || task.description}
+                    {task.task_description}
                   </TableCell>
                   <TableCell>
                     <span
@@ -263,7 +269,7 @@ export default function ImprovementTasksPage() {
                       {task.priority}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={task.status}
                       onValueChange={(v) => handleStatusChange(task.id, v)}
@@ -281,7 +287,6 @@ export default function ImprovementTasksPage() {
                         <SelectItem value="미처리">미처리</SelectItem>
                         <SelectItem value="진행중">진행중</SelectItem>
                         <SelectItem value="완료">완료</SelectItem>
-                        <SelectItem value="보류">보류</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>

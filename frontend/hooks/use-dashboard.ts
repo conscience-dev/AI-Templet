@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import api from "@/lib/api";
 
-// 경영진 요약 타입
-export interface ExecutiveSummary {
+// 요약 지표 타입
+export interface DashboardSummary {
   total_prospects: number;
   new_prospects_this_month: number;
   prospect_conversion_rate: number;
@@ -16,8 +16,8 @@ export interface ExecutiveSummary {
   consultation_count_this_month: number;
 }
 
-// 점포개발팀 메트릭스 타입
-export interface DevTeamMetrics {
+// 상담 관련 지표 타입
+export interface ProspectMetrics {
   prospects_by_status: Record<string, number>;
   prospects_by_region: Record<string, number>;
   consultations_this_week: number;
@@ -32,8 +32,8 @@ export interface DevTeamMetrics {
   };
 }
 
-// 슈퍼바이저 메트릭스 타입
-export interface SupervisorMetrics {
+// 점포/과제 관련 지표 타입
+export interface StoreMetrics {
   assigned_stores: number;
   inspections_this_month: number;
   pending_tasks: number;
@@ -42,14 +42,116 @@ export interface SupervisorMetrics {
   stores_below_threshold: number;
   tasks_by_category: Record<string, number>;
   recent_inspections: Array<{
-    id: number;
+    id: string;
     store_name: string;
     overall_score: number;
     inspection_date: string;
   }>;
 }
 
-// 경영진 요약 조회
+// 요약 지표 조회
+export function useDashboardSummary() {
+  return useQuery<DashboardSummary>({
+    queryKey: ["dashboard", "summary"],
+    queryFn: () =>
+      api.get("/v1/dashboard/summary").then((res) => res.data),
+  });
+}
+
+// 상담 관련 지표 조회
+export function useProspectMetrics() {
+  return useQuery<ProspectMetrics>({
+    queryKey: ["dashboard", "prospect-metrics"],
+    queryFn: () =>
+      api.get("/v1/dashboard/prospect-metrics").then((res) => res.data),
+  });
+}
+
+// 점포/과제 관련 지표 조회
+export function useStoreMetrics() {
+  return useQuery<StoreMetrics>({
+    queryKey: ["dashboard", "store-metrics"],
+    queryFn: () =>
+      api.get("/v1/dashboard/store-metrics").then((res) => res.data),
+  });
+}
+
+// 경영진 대시보드 타입
+export interface ExecutiveSummary {
+  total_prospects: number;
+  total_stores: number;
+  total_revenue_estimate: number;
+  conversion_rate: number;
+  churn_rate: number;
+  monthly_comparison: {
+    prospects_change: number;
+    stores_change: number;
+    tasks_change: number;
+  };
+  channel_performance: Array<{
+    channel: string;
+    count: number;
+    conversion_rate: number;
+  }>;
+  top_performing_stores: Array<{
+    store_name: string;
+    health_score: number;
+  }>;
+  risk_stores: Array<{
+    store_name: string;
+    risk_level: string;
+    reason: string;
+  }>;
+}
+
+// 점포개발팀 대시보드 타입
+export interface DevSummary {
+  active_prospects: number;
+  consultations_this_month: number;
+  conversion_rate: number;
+  prospects_by_status: Record<string, number>;
+  recent_consultations: Array<{
+    prospect_name: string;
+    consultant: string;
+    date: string;
+    result: string;
+  }>;
+  channel_stats: Array<{
+    channel: string;
+    count: number;
+    conversion_rate: number;
+  }>;
+  consultant_performance: Array<{
+    name: string;
+    consultations: number;
+    conversions: number;
+  }>;
+}
+
+// 슈퍼바이저 대시보드 타입
+export interface SupervisorSummary {
+  my_stores: number;
+  inspections_this_month: number;
+  pending_tasks: number;
+  stores_needing_visit: Array<{
+    store_name: string;
+    last_inspection: string | null;
+    days_since: number;
+  }>;
+  urgent_tasks: Array<{
+    store_name: string;
+    task_description: string;
+    priority: string;
+    due_date: string | null;
+    is_overdue: boolean;
+  }>;
+  store_health: Array<{
+    store_name: string;
+    score: number;
+  }>;
+}
+
+// 경영진 대시보드 조회
 export function useExecutiveSummary() {
   return useQuery<ExecutiveSummary>({
     queryKey: ["dashboard", "executive-summary"],
@@ -58,20 +160,20 @@ export function useExecutiveSummary() {
   });
 }
 
-// 점포개발팀 메트릭스 조회
-export function useDevTeamMetrics() {
-  return useQuery<DevTeamMetrics>({
-    queryKey: ["dashboard", "dev-team-metrics"],
+// 점포개발팀 대시보드 조회
+export function useDevSummary() {
+  return useQuery<DevSummary>({
+    queryKey: ["dashboard", "dev-summary"],
     queryFn: () =>
-      api.get("/v1/dashboard/dev-team-metrics").then((res) => res.data),
+      api.get("/v1/dashboard/dev-summary").then((res) => res.data),
   });
 }
 
-// 슈퍼바이저 메트릭스 조회
-export function useSupervisorMetrics() {
-  return useQuery<SupervisorMetrics>({
-    queryKey: ["dashboard", "supervisor-metrics"],
+// 슈퍼바이저 대시보드 조회
+export function useSupervisorSummary() {
+  return useQuery<SupervisorSummary>({
+    queryKey: ["dashboard", "supervisor-summary"],
     queryFn: () =>
-      api.get("/v1/dashboard/supervisor-metrics").then((res) => res.data),
+      api.get("/v1/dashboard/supervisor-summary").then((res) => res.data),
   });
 }

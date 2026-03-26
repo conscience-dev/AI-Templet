@@ -64,39 +64,30 @@ export default function StoresPage() {
 
   // 신규 등록 폼
   const [newStore, setNewStore] = useState({
-    name: "",
+    store_name: "",
     region: "",
     address: "",
-    owner_name: "",
-    owner_phone: "",
-    open_date: "",
   });
 
   const handleCreate = () => {
-    if (!newStore.name || !newStore.region) {
+    if (!newStore.store_name || !newStore.region) {
       toast({ variant: "destructive", title: "점포명과 지역은 필수입니다." });
       return;
     }
     createMutation.mutate(
       {
-        name: newStore.name,
+        store_name: newStore.store_name,
         region: newStore.region,
-        address: newStore.address,
-        owner_name: newStore.owner_name,
-        owner_phone: newStore.owner_phone,
-        open_date: newStore.open_date || undefined,
+        address: newStore.address || undefined,
       },
       {
         onSuccess: () => {
           toast({ variant: "success", title: "점포가 등록되었습니다." });
           setDialogOpen(false);
           setNewStore({
-            name: "",
+            store_name: "",
             region: "",
             address: "",
-            owner_name: "",
-            owner_phone: "",
-            open_date: "",
           });
         },
         onError: () => {
@@ -110,7 +101,7 @@ export default function StoresPage() {
     <div className="mx-auto max-w-6xl px-8 py-8">
       {/* 헤더 */}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-heading1 text-foreground">점포 관리</h1>
+        <h1 className="text-heading1 text-foreground">점포</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="rounded-xl bg-[#c47833] text-white hover:bg-[#b06a2a]">
@@ -128,9 +119,9 @@ export default function StoresPage() {
                   점포명 <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  value={newStore.name}
+                  value={newStore.store_name}
                   onChange={(e) =>
-                    setNewStore((p) => ({ ...p, name: e.target.value }))
+                    setNewStore((p) => ({ ...p, store_name: e.target.value }))
                   }
                   className="h-11 rounded-xl border-border"
                   placeholder="점포명 입력"
@@ -158,42 +149,6 @@ export default function StoresPage() {
                   }
                   className="h-11 rounded-xl border-border"
                   placeholder="상세 주소 입력"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>점주 이름</Label>
-                  <Input
-                    value={newStore.owner_name}
-                    onChange={(e) =>
-                      setNewStore((p) => ({ ...p, owner_name: e.target.value }))
-                    }
-                    className="h-11 rounded-xl border-border"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>점주 연락처</Label>
-                  <Input
-                    value={newStore.owner_phone}
-                    onChange={(e) =>
-                      setNewStore((p) => ({
-                        ...p,
-                        owner_phone: e.target.value,
-                      }))
-                    }
-                    className="h-11 rounded-xl border-border"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>개점일</Label>
-                <Input
-                  type="date"
-                  value={newStore.open_date}
-                  onChange={(e) =>
-                    setNewStore((p) => ({ ...p, open_date: e.target.value }))
-                  }
-                  className="h-11 rounded-xl border-border"
                 />
               </div>
             </div>
@@ -279,7 +234,6 @@ export default function StoresPage() {
               <TableHead className="text-caption font-medium">지역</TableHead>
               <TableHead className="text-caption font-medium">슈퍼바이저</TableHead>
               <TableHead className="text-caption font-medium">상태</TableHead>
-              <TableHead className="text-caption font-medium">개점일</TableHead>
               <TableHead className="text-caption font-medium">최근 점검일</TableHead>
             </TableRow>
           </TableHeader>
@@ -287,7 +241,7 @@ export default function StoresPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="border-border/40">
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 5 }).map((_, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full rounded" />
                     </TableCell>
@@ -296,7 +250,7 @@ export default function StoresPage() {
               ))
             ) : stores.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-48">
+                <TableCell colSpan={5} className="h-48">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#d4a574]/10">
                       <StoreIcon className="h-6 w-6 text-[#c47833]" />
@@ -321,7 +275,7 @@ export default function StoresPage() {
                   className="cursor-pointer border-border/40 transition-colors hover:bg-[#faf9f7]"
                   onClick={() => router.push(`/stores/${store.id}`)}
                 >
-                  <TableCell className="font-medium">{store.name}</TableCell>
+                  <TableCell className="font-medium">{store.store_name}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {store.region}
                   </TableCell>
@@ -340,16 +294,7 @@ export default function StoresPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {store.open_date
-                      ? new Date(store.open_date).toLocaleDateString("ko-KR")
-                      : "-"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {store.last_inspection_date
-                      ? new Date(store.last_inspection_date).toLocaleDateString(
-                          "ko-KR",
-                        )
-                      : "-"}
+                    -
                   </TableCell>
                 </TableRow>
               ))

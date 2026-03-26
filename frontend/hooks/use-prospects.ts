@@ -15,19 +15,17 @@ export interface PaginatedResponse<T> {
 
 // 가맹문의자 타입
 export interface Prospect {
-  id: number;
+  id: string;
   name: string;
   phone: string;
-  email: string;
+  email: string | null;
+  inquiry_path: string;
+  hope_region: string | null;
+  startup_budget: number | null;
   status: string;
-  region: string;
-  source: string;
-  desired_location: string;
-  budget: number | null;
-  experience: string;
-  memo: string;
-  assigned_to: number | null;
-  assigned_to_name: string | null;
+  assigned_user_id: string | null;
+  assigned_user_name: string | null;
+  memo: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -37,14 +35,12 @@ export interface ProspectRequest {
   name: string;
   phone: string;
   email?: string;
+  inquiry_path: string;
+  hope_region?: string;
+  startup_budget?: number | null;
   status?: string;
-  region?: string;
-  source?: string;
-  desired_location?: string;
-  budget?: number | null;
-  experience?: string;
+  assigned_user_id?: string | null;
   memo?: string;
-  assigned_to?: number | null;
 }
 
 // 필터 파라미터 타입
@@ -65,7 +61,7 @@ export function useProspects(params?: ProspectParams) {
 }
 
 // 가맹문의자 상세 조회
-export function useProspect(id: number | null) {
+export function useProspect(id: string | null) {
   return useQuery<Prospect>({
     queryKey: ["prospects", id],
     queryFn: () => api.get(`/v1/prospects/${id}`).then((res) => res.data),
@@ -91,7 +87,7 @@ export function useUpdateProspect() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<ProspectRequest> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<ProspectRequest> }) =>
       api.patch(`/v1/prospects/${id}`, data).then((res) => res.data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["prospects"] });
@@ -100,25 +96,28 @@ export function useUpdateProspect() {
   });
 }
 
-// 가맹문의자 삭제
-export function useDeleteProspect() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) =>
-      api.delete(`/v1/prospects/${id}`).then((res) => res.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["prospects"] });
-    },
-  });
-}
-
 // 가맹문의자별 상담 기록 조회
-export function useProspectConsultations(id: number | null) {
+export function useProspectConsultations(id: string | null) {
   return useQuery({
     queryKey: ["prospects", id, "consultations"],
     queryFn: () =>
       api.get(`/v1/prospects/${id}/consultations`).then((res) => res.data),
     enabled: id !== null,
+  });
+}
+
+// AI 요약 생성
+export function useProspectAiSummary() {
+  return useMutation({
+    mutationFn: (prospectId: string) =>
+      api.post(`/v1/prospects/${prospectId}/ai-summary`).then((res) => res.data),
+  });
+}
+
+// 다음 액션 제안
+export function useProspectNextAction() {
+  return useMutation({
+    mutationFn: (prospectId: string) =>
+      api.post(`/v1/prospects/${prospectId}/next-action`).then((res) => res.data),
   });
 }

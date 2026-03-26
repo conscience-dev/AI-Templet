@@ -40,7 +40,6 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   useProspects,
@@ -52,7 +51,8 @@ import {
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     신규: "bg-blue-50 text-blue-700",
-    진행중: "bg-amber-50 text-amber-700",
+    상담중: "bg-amber-50 text-amber-700",
+    보류: "bg-[#f5f3ef] text-muted-foreground",
     성약: "bg-green-50 text-green-700",
     종료: "bg-[#f5f3ef] text-muted-foreground",
   };
@@ -88,10 +88,9 @@ const initialForm: ProspectRequest = {
   name: "",
   phone: "",
   email: "",
-  source: "",
-  desired_location: "",
-  budget: null,
-  experience: "",
+  inquiry_path: "",
+  hope_region: "",
+  startup_budget: null,
   memo: "",
 };
 
@@ -103,7 +102,6 @@ export default function ProspectsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [regionFilter, setRegionFilter] = useState<string>("");
   const [page, setPage] = useState(1);
-  const [tasting, setTasting] = useState(false);
   const [form, setForm] = useState<ProspectRequest>(initialForm);
 
   const params = {
@@ -150,12 +148,7 @@ export default function ProspectsPage() {
       return;
     }
 
-    const submitData = {
-      ...form,
-      experience: tasting ? "매장시식 완료" : form.experience,
-    };
-
-    createProspect.mutate(submitData, {
+    createProspect.mutate(form, {
       onSuccess: () => {
         toast({
           title: "등록 완료",
@@ -163,7 +156,6 @@ export default function ProspectsPage() {
         });
         setDialogOpen(false);
         setForm(initialForm);
-        setTasting(false);
       },
       onError: (error: unknown) => {
         const err = error as { response?: { data?: { detail?: string } } };
@@ -195,7 +187,7 @@ export default function ProspectsPage() {
       {/* 상태 필터 탭 */}
       <Tabs value={statusFilter} onValueChange={handleStatusChange}>
         <TabsList className="h-10 rounded-xl bg-[#faf9f7] p-1">
-          {["전체", "신규", "진행중", "성약", "종료"].map((status) => (
+          {["전체", "신규", "상담중", "보류", "성약", "종료"].map((status) => (
             <TabsTrigger
               key={status}
               value={status}
@@ -312,16 +304,16 @@ export default function ProspectsPage() {
                       {prospect.phone}
                     </TableCell>
                     <TableCell className="text-caption2 text-muted-foreground">
-                      {prospect.source || "-"}
+                      {prospect.inquiry_path || "-"}
                     </TableCell>
                     <TableCell className="text-caption2 text-muted-foreground">
-                      {prospect.desired_location || prospect.region || "-"}
+                      {prospect.hope_region || "-"}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={prospect.status} />
                     </TableCell>
                     <TableCell className="text-caption2 text-muted-foreground">
-                      {prospect.assigned_to_name || "-"}
+                      {prospect.assigned_user_name || "-"}
                     </TableCell>
                     <TableCell className="text-right text-caption2 text-muted-foreground">
                       {new Date(prospect.created_at).toLocaleDateString(
@@ -421,8 +413,8 @@ export default function ProspectsPage() {
             <div className="space-y-1.5">
               <Label className="text-caption2 text-foreground">문의경로</Label>
               <Select
-                value={form.source}
-                onValueChange={(v) => setForm({ ...form, source: v })}
+                value={form.inquiry_path}
+                onValueChange={(v) => setForm({ ...form, inquiry_path: v })}
               >
                 <SelectTrigger className="h-11 rounded-xl border-border bg-white text-bodymedium">
                   <SelectValue placeholder="문의경로를 선택하세요" />
@@ -445,9 +437,9 @@ export default function ProspectsPage() {
                 </Label>
                 <Input
                   placeholder="예: 서울 강남"
-                  value={form.desired_location}
+                  value={form.hope_region}
                   onChange={(e) =>
-                    setForm({ ...form, desired_location: e.target.value })
+                    setForm({ ...form, hope_region: e.target.value })
                   }
                   className="h-11 rounded-xl border-border bg-white text-bodymedium focus-visible:ring-1 focus-visible:ring-[#c47833]/20"
                 />
@@ -459,29 +451,16 @@ export default function ProspectsPage() {
                 <Input
                   placeholder="예: 5000"
                   type="number"
-                  value={form.budget ?? ""}
+                  value={form.startup_budget ?? ""}
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      budget: e.target.value ? Number(e.target.value) : null,
+                      startup_budget: e.target.value ? Number(e.target.value) : null,
                     })
                   }
                   className="h-11 rounded-xl border-border bg-white text-bodymedium focus-visible:ring-1 focus-visible:ring-[#c47833]/20"
                 />
               </div>
-            </div>
-
-            {/* 매장시식여부 */}
-            <div className="flex items-center justify-between rounded-xl border border-border/60 p-4">
-              <div>
-                <p className="text-caption2 font-medium text-foreground">
-                  매장시식 여부
-                </p>
-                <p className="text-tiny text-muted-foreground">
-                  매장 시식을 완료했는지 여부
-                </p>
-              </div>
-              <Switch checked={tasting} onCheckedChange={setTasting} />
             </div>
 
             {/* 메모 */}
@@ -503,7 +482,6 @@ export default function ProspectsPage() {
               onClick={() => {
                 setDialogOpen(false);
                 setForm(initialForm);
-                setTasting(false);
               }}
               className="rounded-xl border-border/60"
             >

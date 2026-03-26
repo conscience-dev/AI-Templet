@@ -3,18 +3,10 @@ from typing import Optional
 
 
 class ConsultationCreateIn(BaseModel):
-    prospect_id: str
     consultation_order: int
     consultation_date: str  # ISO format datetime
     content: str
-    result: str  # Enum value: A가망고객, B지속고객, C종료의지없음
-    next_action: Optional[str] = None
-
-
-class ConsultationUpdateIn(BaseModel):
-    consultation_date: Optional[str] = None
-    content: Optional[str] = None
-    result: Optional[str] = None
+    result: str  # Enum value: 긍정, 보통, 부정, 종료
     next_action: Optional[str] = None
 
 

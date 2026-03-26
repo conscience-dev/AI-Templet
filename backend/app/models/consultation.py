@@ -8,9 +8,10 @@ from app.models.base import BaseModel, GUID
 
 
 class ConsultationResult(str, enum.Enum):
-    A_PROSPECT = "A가망고객"
-    B_ONGOING = "B지속고객"
-    C_NO_INTENT = "C종료의지없음"
+    POSITIVE = "긍정"
+    NEUTRAL = "보통"
+    NEGATIVE = "부정"
+    CLOSED = "종료"
 
 
 class Consultation(BaseModel):
